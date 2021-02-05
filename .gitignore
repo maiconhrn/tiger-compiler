@@ -1,6 +1,6 @@
 .vscode/
 build/
-*/*yy.c
+*/*yy.cpp
 
 
 # Created by https://www.toptal.com/developers/gitignore/api/clion+all
