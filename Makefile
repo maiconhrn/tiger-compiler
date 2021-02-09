@@ -21,8 +21,8 @@ $(BUILD_DIR)/driver.o: $(SRC_DIR)/driver.cpp $(SRC_DIR)/tokens.hpp
 $(BUILD_DIR)/lex.yy.o: $(SRC_DIR)/lex.yy.cpp $(SRC_DIR)/tokens.hpp
 	g++ -g -c $(SRC_DIR)/lex.yy.cpp -o $(BUILD_DIR)/lex.yy.o
 
-$(SRC_DIR)/lex.yy.cpp: $(SRC_DIR)/tiger.lex
-	lex -o $(SRC_DIR)/lex.yy.cpp $(SRC_DIR)/tiger.lex
+$(SRC_DIR)/lex.yy.cpp: $(SRC_DIR)/tiger.l
+	lex -o $(SRC_DIR)/lex.yy.cpp $(SRC_DIR)/tiger.l
 
 mkdir-build:
 	$(MKDIR) $(BUILD_DIR)
