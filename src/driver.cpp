@@ -1,16 +1,13 @@
-#include <stdio.h>
-
 #include <iostream>
 #include <string>
-
-#include "tokens.hpp"
+#include "y.tab.hpp"
 
 using std::cerr;
 using std::cin;
 using std::cout;
 using std::endl;
 
-YYSTYPE yylval;
+extern YYSTYPE yylval;
 
 int yylex(void); /* prototype for the lexing function */
 
@@ -20,7 +17,7 @@ int main(int argc, char **argv) {
     std::string fname;
     int tok;
     if (argc != 2) {
-        fprintf(stderr, "usage: a.out filename\n");
+        cerr << "Usage: <executable> filename" << endl;
         exit(1);
     }
     fname = argv[1];
@@ -46,5 +43,5 @@ int main(int argc, char **argv) {
         }
     }
 
-    return 0;
+    exit(0);
 }

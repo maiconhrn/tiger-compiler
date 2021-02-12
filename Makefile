@@ -12,13 +12,19 @@ SHELL=/bin/bash
 
 all: $(PROJECT_NAME)
 
-$(PROJECT_NAME): mkdir-build $(BUILD_DIR)/driver.o $(BUILD_DIR)/lex.yy.o
-	g++ -g -o $(BIN) $(BUILD_DIR)/driver.o $(BUILD_DIR)/lex.yy.o
+$(PROJECT_NAME): mkdir-build $(BUILD_DIR)/driver.o $(BUILD_DIR)/y.tab.o $(BUILD_DIR)/lex.yy.o $(BUILD_DIR)/y.tab.o
+	g++ -g -o $(BIN) $(BUILD_DIR)/driver.o $(BUILD_DIR)/y.tab.o $(BUILD_DIR)/lex.yy.o
 
-$(BUILD_DIR)/driver.o: $(SRC_DIR)/driver.cpp $(SRC_DIR)/tokens.hpp
+$(BUILD_DIR)/driver.o: $(SRC_DIR)/driver.cpp $(SRC_DIR)/y.tab.cpp
 	g++ -g -c $(SRC_DIR)/driver.cpp -o $(BUILD_DIR)/driver.o
 
-$(BUILD_DIR)/lex.yy.o: $(SRC_DIR)/lex.yy.cpp $(SRC_DIR)/tokens.hpp
+$(BUILD_DIR)/y.tab.o: $(SRC_DIR)/y.tab.cpp
+	g++ -g -c $(SRC_DIR)/y.tab.cpp -o $(BUILD_DIR)/y.tab.o
+
+$(SRC_DIR)/y.tab.cpp: $(SRC_DIR)/tiger.y
+	bison -dv $(SRC_DIR)/tiger.y -o $(SRC_DIR)/y.tab.cpp
+
+$(BUILD_DIR)/lex.yy.o: $(SRC_DIR)/lex.yy.cpp $(SRC_DIR)/y.tab.hpp
 	g++ -g -c $(SRC_DIR)/lex.yy.cpp -o $(BUILD_DIR)/lex.yy.o
 
 $(SRC_DIR)/lex.yy.cpp: $(SRC_DIR)/tiger.l
@@ -28,4 +34,4 @@ mkdir-build:
 	$(MKDIR) $(BUILD_DIR)
 
 clean: 
-	$(RM) $(BUILD_DIR) $(SRC_DIR)/lex.yy.cpp
+	$(RM) $(BUILD_DIR) $(SRC_DIR)/lex.yy.cpp $(SRC_DIR)/y.tab.cpp $(SRC_DIR)/y.tab.hpp $(SRC_DIR)/y.output

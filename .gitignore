@@ -1,6 +1,9 @@
 .vscode/
 build/
 */*yy.cpp
+*/*tab.cpp
+*/*tab.hpp
+*/*.output
 *test*.in
 
 # Created by https://www.toptal.com/developers/gitignore/api/clion+all
