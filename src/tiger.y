@@ -16,6 +16,8 @@ void yyerror(char *s)
 	std::string *sval;
 }
 
+%locations
+
 %token <sval> ID STRING
 %token <ival> INT
 
@@ -32,7 +34,7 @@ void yyerror(char *s)
 
 program:
     exp
-    | decs;
+    /*| decs*/; /* TODO: retirar pois em tiger um programa e uma expressao nao uma declaracao */
 
 exp:
     /*Literals.*/
@@ -40,12 +42,12 @@ exp:
     | INT
     | STRING
     /*Array and record creations.*/
-    | type_id LBRACK exp RBRACK OF exp
-    | type_id LBRACE atribuitions RBRACE
+    | id LBRACK exp RBRACK OF exp
+    | id LBRACE atribuitions RBRACE
     /*Variables, field, elements of an array.*/
     | lvalue
     /*Function call.*/
-    | ID LPAREN arguments RPAREN
+    | id LPAREN arguments RPAREN
     /*Operations.*/
     | MINUS exp
     | exp op exp
@@ -57,12 +59,12 @@ exp:
     | IF exp THEN exp ELSE exp
     | WHILE exp DO exp
     | DO LBRACE exp RBRACE WHILE exp
-    | FOR ID ASSIGN exp TO exp DO exp
+    | FOR id ASSIGN exp TO exp DO exp
     | BREAK
     | LET decs IN exps END;
 
-lvalue: ID
-    | lvalue DOT ID
+lvalue: id
+    | lvalue DOT id
     | lvalue LBRACK exp RBRACK;
 
 exps: /*empty*/
@@ -88,32 +90,32 @@ dec:
     | fundec;
 
 tydec:
-    TYPE ID EQ ty;
+    TYPE id EQ ty;
 
 ty:
     /*Type alias.*/
-    type_id
+    id
     /*Record type definition.*/
     | LBRACE tyfields RBRACE
     /*Array type definition.*/
-    | ARRAY OF type_id;
+    | ARRAY OF id;
 
 tyfields: /*empty*/
     | tyfield_list;
 
 tyfield_list:
-    ID COLON type_id
-    | ID COLON type_id COMMA tyfield_list;
+    id COLON id
+    | id COLON id COMMA tyfield_list;
 
 vardec:
-    VAR ID ASSIGN exp
-    | VAR ID COLON type_id ASSIGN exp;
+    VAR id ASSIGN exp
+    | VAR id COLON id ASSIGN exp;
 
 fundec:
-    FUNCTION ID LPAREN tyfields RPAREN ASSIGN exp
-    | FUNCTION ID LPAREN tyfields RPAREN COLON type_id ASSIGN exp
+    FUNCTION id LPAREN tyfields RPAREN ASSIGN exp
+    | FUNCTION id LPAREN tyfields RPAREN COLON id ASSIGN exp
 
-type_id:
+id:
     ID;
 
 op:
@@ -141,5 +143,5 @@ atribuitions: /*empty*/
     | atribuition_list;
 
 atribuition_list:
-    ID EQ exp
-    | ID EQ exp COMMA atribuition_list;
+    id EQ exp
+    | id EQ exp COMMA atribuition_list;

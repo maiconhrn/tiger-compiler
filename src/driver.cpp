@@ -9,9 +9,18 @@ using std::endl;
 
 extern YYSTYPE yylval;
 
-int yylex(void); /* prototype for the lexing function */
+//int yylex(void); /* prototype for the lexing function */
+
+extern int yyparse(void); /* prototype for the syntaxing function */
 
 extern FILE *yyin;
+
+void parse(std::string fname) {
+    if (yyparse() == 0) /* parsing worked */
+        fprintf(stderr, "Parsing successful!\n");
+    else
+        fprintf(stderr, "Parsing failed\n");
+}
 
 int main(int argc, char **argv) {
     std::string fname;
@@ -27,21 +36,7 @@ int main(int argc, char **argv) {
         exit(1);
     }
 
-    for (;;) {
-        tok = yylex();
-        if (tok == 0) break;
-        switch (tok) {
-            case ID:
-            case STRING:
-                cout << tok << " - " << *(yylval.sval) << endl;
-                break;
-            case INT:
-                cout << tok << " - " << yylval.ival << endl;
-                break;
-            default:
-                cout << tok << endl;
-        }
-    }
+    parse(fname);
 
     exit(0);
 }

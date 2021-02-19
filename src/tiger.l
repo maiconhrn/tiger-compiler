@@ -14,7 +14,7 @@ char *strptr = NULL;
 int commentDepth = 0;
 int lineNum = 1;
 
-//extern YYLTYPE yyllock; // para usar com o bison
+extern YYLTYPE yyllock; // para usar com o bison
 
 void adjust() {
         charPos+=yyleng;
