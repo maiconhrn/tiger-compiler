@@ -1,8 +1,8 @@
 .vscode/
 build/
-*/*yy.cpp
-*/*tab.cpp
-*/*tab.hpp
+tiger.parser.cpp
+tiger.parser.hpp
+tiger.lexer.cpp
 */*.output
 *test*.in
 
