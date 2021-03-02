@@ -33,7 +33,6 @@ using namespace AST;
     Field *field;
     TypeDec *typeDec;
     FunctionDec *functionDec;
-    BinaryExp::Operator op;
     std::vector<std::unique_ptr<Exp>> *exps;
     std::vector<std::unique_ptr<Dec>> *decList;
     std::vector<std::unique_ptr<Field>> *fieldList;
@@ -44,6 +43,11 @@ using namespace AST;
 
 %token <sval> ID STRING
 %token <ival> INT
+
+%token
+  COMMA COLON SEMICOLON LPAREN RPAREN LBRACK RBRACK LBRACE RBRACE DOT
+  PLUS MINUS TIMES DIVIDE EQ NEQ LT LE GT GE AND OR ASSIGN
+  ARRAY IF THEN ELSE WHILE FOR TO DO LET IN END OF BREAK NIL FUNCTION VAR TYPE
 
 %type <root> root
 %type <exp> exp iff loop let
@@ -57,19 +61,18 @@ using namespace AST;
 %type <fieldList> tyfields tyfield_list
 %type <fieldExpList> atribuitions atribuition_list
 %type<exps> exps arguments argument_list
-%type<op> op
 %type<type> ty
 
-%token
-  COMMA COLON SEMICOLON LPAREN RPAREN LBRACK RBRACK LBRACE RBRACE DOT
-  PLUS MINUS TIMES DIVIDE EQ NEQ LT LE GT GE AND OR ASSIGN
-  ARRAY IF THEN ELSE WHILE FOR TO DO LET IN END OF BREAK NIL FUNCTION VAR TYPE
+%left OR
+%left AND
+%nonassoc EQ NEQ LE LT GT GE
+%left PLUS MINUS
+%left TIMES DIVIDE
+%left UMINUS
 
 %start program
 
 %%
-
- /* grammar based on ----------> https://www.lrde.epita.fr/~tiger/tiger.html#Syntactic-Specifications */
 
 program:
     root {
@@ -119,15 +122,72 @@ exp:
         delete $1;
     }
     /*Operations.*/
-    | MINUS exp {
+    | MINUS exp %prec UMINUS {
         $$ = new BinaryExp(Location(@1.first_line, @1.first_column),
                     BinaryExp::SUB,
                     std::unique_ptr<Exp>(new IntExp(Location(@1.first_line, @1.first_column), 0)),
                     std::unique_ptr<Exp>($2));
     }
-    | exp op exp {
+    | exp AND exp {
+        $$ = new IfExp(Location(@1.first_line, @1.first_column),
+                std::unique_ptr<Exp>($1),
+                std::unique_ptr<Exp>($3),
+                std::unique_ptr<Exp>(new IntExp(Location(@1.first_line, @1.first_column), 0)));
+    }
+    | exp OR exp {
+        $$ = new IfExp(Location(@1.first_line, @1.first_column),
+                std::unique_ptr<Exp>($1),
+                std::unique_ptr<Exp>(new IntExp(Location(@1.first_line, @1.first_column), 1)),
+                std::unique_ptr<Exp>($3));    
+    }
+    | exp PLUS exp {
         $$ = new BinaryExp(Location(@1.first_line, @1.first_column),
-                $2, 
+                BinaryExp::ADD, 
+                std::unique_ptr<Exp>($1), std::unique_ptr<Exp>($3));
+    }
+    | exp MINUS exp {
+        $$ = new BinaryExp(Location(@1.first_line, @1.first_column),
+                BinaryExp::SUB, 
+                std::unique_ptr<Exp>($1), std::unique_ptr<Exp>($3));
+    }
+    | exp TIMES exp {
+        $$ = new BinaryExp(Location(@1.first_line, @1.first_column),
+                BinaryExp::MUL, 
+                std::unique_ptr<Exp>($1), std::unique_ptr<Exp>($3));
+    }
+    | exp DIVIDE exp {
+        $$ = new BinaryExp(Location(@1.first_line, @1.first_column),
+                BinaryExp::DIV, 
+                std::unique_ptr<Exp>($1), std::unique_ptr<Exp>($3));
+    }
+    | exp EQ exp {
+        $$ = new BinaryExp(Location(@1.first_line, @1.first_column),
+                BinaryExp::EQU, 
+                std::unique_ptr<Exp>($1), std::unique_ptr<Exp>($3));
+    }
+    | exp NEQ exp {
+        $$ = new BinaryExp(Location(@1.first_line, @1.first_column),
+                BinaryExp::NEQU, 
+                std::unique_ptr<Exp>($1), std::unique_ptr<Exp>($3));
+    }
+    | exp GT exp {
+        $$ = new BinaryExp(Location(@1.first_line, @1.first_column),
+                BinaryExp::GTH, 
+                std::unique_ptr<Exp>($1), std::unique_ptr<Exp>($3));
+    }
+    | exp LT exp {
+        $$ = new BinaryExp(Location(@1.first_line, @1.first_column),
+                BinaryExp::LTH, 
+                std::unique_ptr<Exp>($1), std::unique_ptr<Exp>($3));
+    }
+    | exp GE exp {
+        $$ = new BinaryExp(Location(@1.first_line, @1.first_column),
+                BinaryExp::GEQ, 
+                std::unique_ptr<Exp>($1), std::unique_ptr<Exp>($3));
+    }
+    | exp LE exp {
+        $$ = new BinaryExp(Location(@1.first_line, @1.first_column),
+                BinaryExp::LEQ, 
                 std::unique_ptr<Exp>($1), std::unique_ptr<Exp>($3));
     }
     | LPAREN exps RPAREN {
@@ -322,44 +382,6 @@ fundec:
 id:
     ID {
         $$ = $1;
-    };
-
-op:
-    PLUS {
-        $$ = BinaryExp::ADD;
-    }
-    | MINUS {
-        $$ = BinaryExp::SUB;
-    }
-    | TIMES {
-        $$ = BinaryExp::MUL;
-    }
-    | DIVIDE {
-        $$ = BinaryExp::DIV;
-    }
-    | EQ {
-        $$ = BinaryExp::EQU;
-    }
-    | NEQ {
-        $$ = BinaryExp::NEQU;
-    }
-    | GT {
-        $$ = BinaryExp::GTH;
-    }
-    | LT {
-        $$ = BinaryExp::LTH;
-    }
-    | GE {
-        $$ = BinaryExp::GEQ;
-    }
-    | LE {
-        $$ = BinaryExp::LEQ;
-    }
-    | AND {
-        $$ = BinaryExp::AND_;
-    }
-    | OR {
-        $$ = BinaryExp::OR_;
     };
 
 arguments: /*empty*/ {

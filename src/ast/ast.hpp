@@ -370,7 +370,8 @@ namespace AST {
         unique_ptr<Exp> else_;
 
     public:
-        IfExp(Location loc, unique_ptr<Exp> test, unique_ptr<Exp> then, unique_ptr<Exp> elsee)
+        IfExp(Location loc, unique_ptr<Exp> test,
+              unique_ptr<Exp> then, unique_ptr<Exp> elsee)
                 : Exp(loc), test_(move(test)), then_(move(then)), else_(move(elsee)) {}
 
         Value *codegen(CodeGenContext &context) override;

@@ -7,7 +7,7 @@ Implementation of a compiler of Tiger language for Informatics college course at
 - QT 5>= (qmake)
 - flex 2.6.4>=
 - bison 3.5.1>=
-- LLVM 10>= (If is highier version, you need to change the value of "LLVM" variable in  [tiger-compiler.pro](./tiger-compiler.pro) file)
+- LLVM 10>= (If is highier version, you need to change the value of "LLVM" variable in  [tiger-compiler.pro](./tiger-compiler.pro))
 
 # Instructions
 The compile phase generated files will be placed in "{{projectRootDir}}/build/" directory.

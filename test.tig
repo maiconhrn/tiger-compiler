@@ -33,12 +33,12 @@ in
     dummy(c, b);
 
     let
-        var a := 8
+        var a := c
     in
-        if -b+a then
+        if -b*b then
             do (
                 rec1.age := rec1.age + 1;
                 b := b * 2;
-            ) while a
+            ) while b
     end
 end
