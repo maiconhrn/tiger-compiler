@@ -17,14 +17,14 @@ To compile run:
     ```shell
     $ qmake tiger-compiler.pro
     ```
-- Compile project to generate the {{projectRootDir}}/build/qt executable:
+- Compile project to generate the {{projectRootDir}}/build/tc executable:
     ```shell
     $ make
     ```
 
 To execute run:  
 ```shell
-$ ./build/qt -p {{path to the file with Tiger code}}
+$ ./build/tc -p {{path to the file with Tiger code}}
 ```
 
 # Examples
@@ -32,5 +32,5 @@ You can use the [test.tig](./test.tig) file for test
 
 ex:  
 ```shell
-$ ./build/qt -p test.tig
+$ ./build/tc -p test.tig
 ```
