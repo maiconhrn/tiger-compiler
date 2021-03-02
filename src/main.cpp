@@ -17,11 +17,24 @@ extern int yyparse(void); /* prototype for the syntaxing function */
 
 extern FILE *yyin;
 
-void parse(std::string fname) {
-    if (yyparse() == 0) /* parsing worked */
-        fprintf(stderr, "Parsing successful!\n");
-    else
-        fprintf(stderr, "Parsing failed\n");
+void syntacticAnalisys(std::string fname) {
+    if (yyparse() == 0) {
+        cout << "Syntactic analysis successful!" << endl;
+    } else {
+        cerr << "Syntactic analysis failed" << endl;
+        exit(1);
+    }
+}
+
+void semanticAnalisys() {
+    if (root) {
+        if (root->semanticAnalisys()) {
+            cout << "Semantic analysis successful!" << endl;
+        } else {
+            cerr << "Semantic analysis failed" << endl;
+            exit(1);
+        }
+    }
 }
 
 std::string toknames[] = {
@@ -77,11 +90,13 @@ std::string tokname(int tok) {
 int main(int argc, char **argv) {
     std::string fname;
     int tok;
-    if (argc != 2) {
-        cerr << "Usage: <executable> filename" << endl;
+
+    if (argc != 3) {
+        cerr << "Usage: <executable> -p filename" << endl;
         exit(1);
     }
-    fname = argv[1];
+
+    fname = argv[2];
     yyin = fopen(fname.c_str(), "r");
     if (!yyin) {
         cerr << "Cannot open file: " << fname << endl;
@@ -104,13 +119,8 @@ int main(int argc, char **argv) {
     //     }
     // }
 
-    parse(fname);
-
-    if (root) {
-        CodeGenContext codeGenContext;
-        std::vector<VarDec *> v;
-        root->traverse(v, codeGenContext);
-    }
+    syntacticAnalisys(fname);
+    semanticAnalisys();
 
     exit(0);
 }

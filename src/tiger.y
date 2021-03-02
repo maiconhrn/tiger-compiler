@@ -29,8 +29,15 @@ using namespace AST;
     Exp *exp;
     Var *var;
     Dec *dec;
+    Type *type;
+    Field *field;
+    TypeDec *typeDec;
+    FunctionDec *functionDec;
+    BinaryExp::Operator op;
     std::vector<std::unique_ptr<Exp>> *exps;
     std::vector<std::unique_ptr<Dec>> *decList;
+    std::vector<std::unique_ptr<Field>> *fieldList;
+    std::vector<std::unique_ptr<FieldExp>> *fieldExpList;
 }
 
 %locations
@@ -44,7 +51,14 @@ using namespace AST;
 %type <var> lvalue
 %type <dec> dec vardec
 %type <decList> decs
-%type<exps> exps;
+%type <typeDec> tydec
+%type <functionDec> fundec
+%type <field> tyfield
+%type <fieldList> tyfields tyfield_list
+%type <fieldExpList> atribuitions atribuition_list
+%type<exps> exps arguments argument_list
+%type<op> op
+%type<type> ty
 
 %token
   COMMA COLON SEMICOLON LPAREN RPAREN LBRACK RBRACK LBRACE RBRACE DOT
@@ -57,35 +71,75 @@ using namespace AST;
 
  /* grammar based on ----------> https://www.lrde.epita.fr/~tiger/tiger.html#Syntactic-Specifications */
 
-program: root {root=std::unique_ptr<Root>($1);}
-    ;
+program:
+    root {
+        root = std::unique_ptr<Root>($1);
+    };
 
-root: exp;
+root:
+    exp {
+        $$ = new Root(Location(@1.first_line, @1.first_column), std::unique_ptr<Exp>($1));
+    };
 
 exp:
     /*Literals.*/
-    NIL
+    NIL {
+        $$ = new NilExp(Location(@1.first_line, @1.first_column));
+    }
     | INT {
-        $$ = new IntExp($1);
+        $$ = new IntExp(Location(@1.first_line, @1.first_column), $1);
     }
     | STRING {
-        $$ = new StringExp(*$1); delete $1;
+        $$ = new StringExp(Location(@1.first_line, @1.first_column), *$1); 
+        delete $1;
     }
     /*Array and record creations.*/
-    | id LBRACK exp RBRACK OF exp
-    | id LBRACE atribuitions RBRACE
+    | id LBRACK exp RBRACK OF exp {
+        $$ = new ArrayExp(Location(@1.first_line, @1.first_column),
+                *$1,
+                std::unique_ptr<Exp>($3),
+                std::unique_ptr<Exp>($6));
+        delete $1;
+    }
+    | id LBRACE atribuitions RBRACE {
+        $$ = new RecordExp(Location(@1.first_line, @1.first_column),
+                *$1,
+                std::move(*$3));
+        delete $1;
+    }
     /*Variables, field, elements of an array.*/
     | lvalue {
-        $$ = new VarExp(std::unique_ptr<Var>($1));
+        $$ = new VarExp(Location(@1.first_line, @1.first_column),
+                std::unique_ptr<Var>($1));
     }
     /*Function call.*/
-    | id LPAREN arguments RPAREN
+    | id LPAREN arguments RPAREN {
+        $$ = new CallExp(Location(@1.first_line, @1.first_column),
+                *$1, std::move(*$3));
+        delete $1;
+    }
     /*Operations.*/
-    | MINUS exp
-    | exp op exp
-    | LPAREN exps RPAREN
+    | MINUS exp {
+        $$ = new BinaryExp(Location(@1.first_line, @1.first_column),
+                    BinaryExp::SUB,
+                    std::unique_ptr<Exp>(new IntExp(Location(@1.first_line, @1.first_column), 0)),
+                    std::unique_ptr<Exp>($2));
+    }
+    | exp op exp {
+        $$ = new BinaryExp(Location(@1.first_line, @1.first_column),
+                $2, 
+                std::unique_ptr<Exp>($1), std::unique_ptr<Exp>($3));
+    }
+    | LPAREN exps RPAREN {
+        $$ = new SequenceExp(Location(@1.first_line, @1.first_column),
+                std::move(*$2));
+    }
     /*Assignment.*/
-    | lvalue ASSIGN exp
+    | lvalue ASSIGN exp {
+        $$ = new AssignExp(Location(@1.first_line, @1.first_column),
+                std::unique_ptr<Var>($1),
+                std::unique_ptr<Exp>($3));
+    }
     /*Control structures.*/
     | iff {
         $$ = $1;
@@ -93,44 +147,62 @@ exp:
     | loop {
         $$ = $1;
     }
-    | BREAK
     | let {
         $$ = $1;
     };
 
 iff:
     IF exp THEN exp {
-        $$ = new IfExp(std::unique_ptr<Exp>($2), std::unique_ptr<Exp>($4), nullptr);
+        $$ = new IfExp(Location(@1.first_line, @1.first_column), std::unique_ptr<Exp>($2), std::unique_ptr<Exp>($4), nullptr);
     }
     | IF exp THEN exp ELSE exp {
-        $$ = new IfExp(std::unique_ptr<Exp>($2), std::unique_ptr<Exp>($4), std::unique_ptr<Exp>($6));
+        $$ = new IfExp(Location(@1.first_line, @1.first_column), std::unique_ptr<Exp>($2), std::unique_ptr<Exp>($4), std::unique_ptr<Exp>($6));
     };
 
 loop:
     WHILE exp DO exp {
-        $$ = new WhileExp(std::unique_ptr<Exp>($2), std::unique_ptr<Exp>($4));
+        $$ = new WhileExp(Location(@1.first_line, @1.first_column), std::unique_ptr<Exp>($2), std::unique_ptr<Exp>($4));
     }
-    | DO LBRACE exp RBRACE WHILE exp {
-        $$ = new DoWhileExp(std::unique_ptr<Exp>($3), std::unique_ptr<Exp>($6));
+    | DO exp WHILE exp {
+        $$ = new DoWhileExp(Location(@1.first_line, @1.first_column), std::unique_ptr<Exp>($2), std::unique_ptr<Exp>($4));
     }
     | FOR id ASSIGN exp TO exp DO exp {
-        $$ = new ForExp(@1.first_line, @1.first_column, *$2, std::unique_ptr<Exp>($4),
+        $$ = new ForExp(Location(@1.first_line, @1.first_column), *$2, std::unique_ptr<Exp>($4),
                         std::unique_ptr<Exp>($6), 
                         std::unique_ptr<Exp>($8));
         delete $2;
     }
+    | BREAK {
+        $$ = new BreakExp(Location(@1.first_line, @1.first_column));
+    };
 
 let:
     LET decs IN exps END {
-        $$ = new LetExp(std::move(*$2), std::make_unique<SequenceExp>(std::move(*$4)));
+        $$ = new LetExp(Location(@1.first_line, @1.first_column), std::move(*$2), std::make_unique<SequenceExp>(Location(@1.first_line, @1.first_column), std::move(*$4)));
     };
 
 lvalue:
     id {
-        $$ = new SimpleVar(*$1); delete $1;
+        $$ = new SimpleVar(Location(@1.first_line, @1.first_column), *$1);
+        delete $1;
     }
-    | lvalue DOT id
-    | lvalue LBRACK exp RBRACK;
+    | id LBRACK exp RBRACK {
+        $$ = new SubscriptVar(Location(@1.first_line, @1.first_column),
+                std::make_unique<SimpleVar>(Location(@1.first_line, @1.first_column), *$1),
+                std::unique_ptr<Exp>($3));
+        delete $1;
+    }
+    | lvalue DOT id {
+        $$ = new FieldVar(Location(@1.first_line, @1.first_column),
+                std::unique_ptr<Var>($1),
+                *$3);
+        delete $3;
+    }
+    | lvalue LBRACK exp RBRACK {
+        $$ = new SubscriptVar(Location(@1.first_line, @1.first_column),
+                std::unique_ptr<Var>($1),
+                std::unique_ptr<Exp>($3));
+    };
 
 exps: /*empty*/ {
         $$ = new std::vector<std::unique_ptr<Exp>>();
@@ -154,70 +226,177 @@ decs: /*empty*/ {
 
 dec:
     /*Type declaration.*/
-    tydec
+    tydec {
+        $$ = $1;
+    }
     /*Variable declaration.*/
     | vardec {
         $$ = $1;
     }
     /*Function declaration.*/
-    | fundec;
+    | fundec {
+        $$ = $1;
+    };
 
 tydec:
-    TYPE id EQ ty;
+    TYPE id EQ ty {
+        $$ = new TypeDec(Location(@1.first_line, @1.first_column), *$2, std::unique_ptr<Type>($4));
+        delete $2;
+    };
 
 ty:
     /*Type alias.*/
-    id
+    id {
+        $$ = new NameType(Location(@1.first_line, @1.first_column), *$1);
+        delete $1;
+    }
     /*Record type definition.*/
-    | LBRACE tyfields RBRACE
+    | LBRACE tyfields RBRACE {
+        $$ = new RecordType(Location(@1.first_line, @1.first_column), std::move(*$2));
+    }
     /*Array type definition.*/
-    | ARRAY OF id;
+    | ARRAY OF id {
+        $$ = new ArrayType(Location(@1.first_line, @1.first_column), *$3);
+        delete $3;
+    };
 
-tyfields: /*empty*/
-    | tyfield_list;
+tyfields: /*empty*/ {
+        $$=new std::vector<std::unique_ptr<Field>>();
+    } 
+    | tyfield_list {
+        $$ = $1;
+    };
 
 tyfield_list:
-    id COLON id
-    | id COLON id COMMA tyfield_list;
+    tyfield {
+        $$ = new std::vector<std::unique_ptr<Field>>();
+        $$->push_back(std::unique_ptr<Field>($1));
+    }
+    | tyfield COMMA tyfield_list {
+        $$ = $3;
+        $3->push_back(std::unique_ptr<Field>($1));
+    };
+
+tyfield:
+    id COLON id {
+        $$ = new Field(Location(@1.first_line, @1.first_column), *$1, *$3);
+        delete $1;
+        delete $3;
+    };
 
 vardec:
     VAR id ASSIGN exp {
-        $$ = new VarDec(*$2, "", std::unique_ptr<Exp>($4));
+        $$ = new VarDec(Location(@1.first_line, @1.first_column),
+                    *$2,
+                    "",
+                    std::unique_ptr<Exp>($4));
         delete $2;
     }
-    | VAR id COLON id ASSIGN exp;
+    | VAR id COLON id ASSIGN exp {
+        $$ = new VarDec(Location(@1.first_line, @1.first_column),
+                    *$2,
+                    *$4,
+                    std::unique_ptr<Exp>($6));
+        delete $2;
+        delete $4;
+    };
 
 fundec:
-    FUNCTION id LPAREN tyfields RPAREN EQ exp
-    | FUNCTION id LPAREN tyfields RPAREN COLON id EQ exp
+    FUNCTION id LPAREN tyfields RPAREN EQ exp {
+        $$ = new FunctionDec(Location(@1.first_line, @1.first_column),
+                    *$2,
+                    std::make_unique<Prototype>(Location(@1.first_line, @1.first_column), 
+                        *$2, std::move(*$4), ""),
+                    std::unique_ptr<Exp>($7));
+        delete $2;
+    }
+    | FUNCTION id LPAREN tyfields RPAREN COLON id EQ exp {
+        $$ = new FunctionDec(Location(@1.first_line, @1.first_column),
+                    *$2,
+                    std::make_unique<Prototype>(Location(@1.first_line, @1.first_column),
+                        *$2, std::move(*$4), *$7),
+                    std::unique_ptr<Exp>($9));
+        delete $2;
+    }
 
 id:
-    ID;
+    ID {
+        $$ = $1;
+    };
 
 op:
-    PLUS
-    | MINUS
-    | TIMES
-    | DIVIDE
-    | EQ
-    | NEQ
-    | GT
-    | LT
-    | GE
-    | LE
-    | AND
-    | OR;
+    PLUS {
+        $$ = BinaryExp::ADD;
+    }
+    | MINUS {
+        $$ = BinaryExp::SUB;
+    }
+    | TIMES {
+        $$ = BinaryExp::MUL;
+    }
+    | DIVIDE {
+        $$ = BinaryExp::DIV;
+    }
+    | EQ {
+        $$ = BinaryExp::EQU;
+    }
+    | NEQ {
+        $$ = BinaryExp::NEQU;
+    }
+    | GT {
+        $$ = BinaryExp::GTH;
+    }
+    | LT {
+        $$ = BinaryExp::LTH;
+    }
+    | GE {
+        $$ = BinaryExp::GEQ;
+    }
+    | LE {
+        $$ = BinaryExp::LEQ;
+    }
+    | AND {
+        $$ = BinaryExp::AND_;
+    }
+    | OR {
+        $$ = BinaryExp::OR_;
+    };
 
-arguments: /*empty*/
-    | argument_list;
+arguments: /*empty*/ {
+        $$ = new std::vector<std::unique_ptr<Exp>>();
+    }
+    | argument_list {
+        $$ = $1;
+    };
 
 argument_list:
-    exp
-    | exp COMMA argument_list;
+    exp {
+        $$ = new std::vector<std::unique_ptr<Exp>>();
+        $$->push_back(std::unique_ptr<Exp>($1));
+    }
+    | exp COMMA argument_list {
+        $$ = $3;
+        $3->push_back(std::unique_ptr<Exp>($1));
+    };
 
-atribuitions: /*empty*/
-    | atribuition_list;
+atribuitions: /*empty*/ {
+        $$ = new std::vector<std::unique_ptr<FieldExp>>();
+    }
+    | atribuition_list {
+        $$ = $1;
+    };
 
 atribuition_list:
-    id EQ exp
-    | id EQ exp COMMA atribuition_list;
+    id EQ exp {
+        $$ = new std::vector<std::unique_ptr<FieldExp>>();
+        $$->push_back(std::make_unique<FieldExp>(Location(@1.first_line, @1.first_column),
+                        *$1,
+                        std::unique_ptr<Exp>($3)));
+        delete $1;
+    }
+    | id EQ exp COMMA atribuition_list {
+        $$ = $5;
+        $5->push_back(std::make_unique<FieldExp>(Location(@1.first_line, @1.first_column),
+                        *$1, std::unique_ptr<Exp>($3)));
+        delete $1;
+    };

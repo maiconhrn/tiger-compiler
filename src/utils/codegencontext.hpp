@@ -1,5 +1,6 @@
 #ifndef CODEGENCONTEXT_H
 #define CODEGENCONTEXT_H
+
 #include "ast/ast.hpp"
 #include <llvm/IR/Constant.h>
 #include <llvm/IR/DerivedTypes.h>
@@ -23,76 +24,91 @@
 #include <set>
 
 namespace AST {
-class Type;
-class VarDec;
-class FunctionDec;
+    class Type;
+
+    class VarDec;
+
+    class FunctionDec;
+
+    class Location;
 }  // namespace AST
 
 class CodeGenContext {
- public:
-  bool hasError{false};
-  llvm::LLVMContext context;
-  llvm::IRBuilder<> builder{context};
-  std::unique_ptr<llvm::Module> module{
-      std::make_unique<llvm::Module>("main", context)};
-  SymbolTable<AST::VarDec> valueDecs;
-  SymbolTable<llvm::Type> types;
-  SymbolTable<AST::Type> typeDecs;
-  SymbolTable<llvm::Function> functions;
-  SymbolTable<AST::FunctionDec> functionDecs;
-  // TODO
-  // SymbolTable<std::string> externalFunctions;
-  std::deque<llvm::StructType *> staticLink;
-  llvm::AllocaInst *currentFrame;
-  size_t currentLevel = 0;
+public:
+    bool hasError{false};
+    llvm::LLVMContext context;
+    llvm::IRBuilder<> builder{context};
+    std::unique_ptr<llvm::Module> module{
+            std::make_unique<llvm::Module>("main", context)};
+    SymbolTable<AST::VarDec> valueDecs;
+    SymbolTable<llvm::Type> types;
+    SymbolTable<AST::Type> typeDecs;
+    SymbolTable<llvm::Function> functions;
+    SymbolTable<AST::FunctionDec> functionDecs;
+    // TODO
+    // SymbolTable<std::string> externalFunctions;
+    std::deque<llvm::StructType *> staticLink;
+    llvm::AllocaInst *currentFrame;
+    size_t currentLevel = 0;
 
-  llvm::Type *intType{llvm::Type::getInt64Ty(context)};
-  llvm::Type *voidType{llvm::Type::getVoidTy(context)};
-  llvm::Type *stringType{
-      llvm::PointerType::getUnqual(llvm::Type::getInt8Ty(context))};
-  llvm::PointerType *nilType{
-      llvm::PointerType::getUnqual(llvm::StructType::get(context))};
-  // llvm::Type *stringType{llvm::Type::getInt64Ty(context)};
-  llvm::Function *allocaArrayFunction{createIntrinsicFunction(
-      "allocaArray",
-      {llvm::Type::getInt64Ty(context), llvm::Type::getInt64Ty(context)},
-      llvm::Type::getInt8PtrTy(context))};
-  llvm::Function *allocaRecordFunction = {
-      createIntrinsicFunction("allocaRecord", {llvm::Type::getInt64Ty(context)},
-                              llvm::Type::getInt8PtrTy(context))};
-  llvm::Function *strCmpFunction = {
-      createIntrinsicFunction("strcmp_", {stringType, stringType}, intType)};
-  std::stack<
-      std::tuple<llvm::BasicBlock * /*next*/, llvm::BasicBlock * /*after*/>>
-      loopStack;
-  llvm::Value *zero{llvm::ConstantInt::get(intType, llvm::APInt(64, 0))};
-  llvm::Value *one{llvm::ConstantInt::get(intType, llvm::APInt(64, 1))};
+    llvm::Type *intType{llvm::Type::getInt64Ty(context)};
+    llvm::Type *voidType{llvm::Type::getVoidTy(context)};
+    llvm::Type *stringType{
+            llvm::PointerType::getUnqual(llvm::Type::getInt8Ty(context))};
+    llvm::PointerType *nilType{
+            llvm::PointerType::getUnqual(llvm::StructType::get(context))};
+    // llvm::Type *stringType{llvm::Type::getInt64Ty(context)};
+    llvm::Function *allocaArrayFunction{createIntrinsicFunction(
+            "allocaArray",
+            {llvm::Type::getInt64Ty(context), llvm::Type::getInt64Ty(context)},
+            llvm::Type::getInt8PtrTy(context))};
+    llvm::Function *allocaRecordFunction = {
+            createIntrinsicFunction("allocaRecord", {llvm::Type::getInt64Ty(context)},
+                                    llvm::Type::getInt8PtrTy(context))};
+    llvm::Function *strCmpFunction = {
+            createIntrinsicFunction("strcmp_", {stringType, stringType}, intType)};
+    std::stack<
+            std::tuple<llvm::BasicBlock * /*next*/, llvm::BasicBlock * /*after*/>>
+            loopStack;
+    llvm::Value *zero{llvm::ConstantInt::get(intType, llvm::APInt(64, 0))};
+    llvm::Value *one{llvm::ConstantInt::get(intType, llvm::APInt(64, 1))};
 
-  llvm::Value *logErrorV(std::string const &msg);
+    llvm::Value *logErrorV(std::string const &msg);
 
-  llvm::AllocaInst *createEntryBlockAlloca(llvm::Function *function,
-                                           llvm::Type *type,
-                                           const std::string &name,
-                                           llvm::Value *size = nullptr);
+    llvm::AllocaInst *createEntryBlockAlloca(llvm::Function *function,
+                                             llvm::Type *type,
+                                             const std::string &name,
+                                             llvm::Value *size = nullptr);
 
-  llvm::Type *getElementType(llvm::Type *type);
+    llvm::Type *getElementType(llvm::Type *type);
 
-  bool isNil(llvm::Type *exp);
-  bool isRecord(llvm::Type *exp);
-  bool isMatch(llvm::Type *a, llvm::Type *b);
-  llvm::Value *checkStore(llvm::Value *val, llvm::Value *ptr);
-  llvm::Value *convertNil(llvm::Value *val, llvm::Value *other);
-  llvm::Function *createIntrinsicFunction(std::string const &name,
-                                          std::vector<llvm::Type *> const &args,
-                                          llvm::Type *retType);
-  llvm::Value *strcmp(llvm::Value *a, llvm::Value *b);
-  void intrinsic();
-  llvm::Type *logErrorT(std::string const &msg);
+    bool isNil(llvm::Type *exp);
 
-  llvm::Type *typeOf(std::string const &name,
-                     std::set<std::string> &parentName);
-  llvm::Type *typeOf(const std::string &name);
-  CodeGenContext();
+    bool isRecord(llvm::Type *exp);
+
+    bool isMatch(llvm::Type *a, llvm::Type *b);
+
+    llvm::Value *checkStore(llvm::Value *val, llvm::Value *ptr);
+
+    llvm::Value *convertNil(llvm::Value *val, llvm::Value *other);
+
+    llvm::Function *createIntrinsicFunction(std::string const &name,
+                                            std::vector<llvm::Type *> const &args,
+                                            llvm::Type *retType);
+
+    llvm::Value *strcmp(llvm::Value *a, llvm::Value *b);
+
+    void intrinsic();
+
+    llvm::Type *logErrorT(std::string const &msg,
+                          AST::Location const &loc);
+
+    llvm::Type *typeOf(const AST::Location &loc, std::string const &name,
+                       std::set<std::string> &parentName);
+
+    llvm::Type *typeOf(const AST::Location &loc, const std::string &name);
+
+    CodeGenContext();
 };
 
 #endif  // CODEGENCONTEXT_H

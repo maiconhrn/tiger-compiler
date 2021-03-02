@@ -6,67 +6,67 @@
 #include "ast/ast.hpp"
 
 llvm::Value *AST::Root::codegen(CodeGenContext &context) {
-  std::cout << "OPA1" << std::endl;
+  // std::cout << "OPA1" << std::endl;
 
-  // clear context.builder and context;
-  llvm::legacy::PassManager pm;
-  pm.add(llvm::createPrintModulePass(llvm::outs()));
+  // // clear context.builder and context;
+  // llvm::legacy::PassManager pm;
+  // pm.add(llvm::createPrintModulePass(llvm::outs()));
 
-  llvm::InitializeAllTargetInfos();
-  llvm::InitializeAllTargets();
-  llvm::InitializeAllTargetMCs();
-  llvm::InitializeAllAsmParsers();
-  llvm::InitializeAllAsmPrinters();
+  // llvm::InitializeAllTargetInfos();
+  // llvm::InitializeAllTargets();
+  // llvm::InitializeAllTargetMCs();
+  // llvm::InitializeAllAsmParsers();
+  // llvm::InitializeAllAsmPrinters();
 
-  auto targetTriple = llvm::sys::getDefaultTargetTriple();
-  context.module->setTargetTriple(targetTriple);
+  // auto targetTriple = llvm::sys::getDefaultTargetTriple();
+  // context.module->setTargetTriple(targetTriple);
 
-  std::string error;
-  auto target = llvm::TargetRegistry::lookupTarget(targetTriple, error);
+  // std::string error;
+  // auto target = llvm::TargetRegistry::lookupTarget(targetTriple, error);
 
-  // Print an error and exit if we couldn't find the requested target.
-  // This generally occurs if we've forgotten to initialise the
-  // TargetRegistry or we have a bogus target triple.
-  if (!target) {
-    llvm::errs() << error;
-    return nullptr;
-  }
+  // // Print an error and exit if we couldn't find the requested target.
+  // // This generally occurs if we've forgotten to initialise the
+  // // TargetRegistry or we have a bogus target triple.
+  // if (!target) {
+  //   llvm::errs() << error;
+  //   return nullptr;
+  // }
 
-  auto CPU = "generic";
-  auto features = "";
+  // auto CPU = "generic";
+  // auto features = "";
 
-  llvm::TargetOptions opt;
-  auto RM = llvm::Optional<llvm::Reloc::Model>();
-  auto targetMachine =
-      target->createTargetMachine(targetTriple, CPU, features, opt, RM);
+  // llvm::TargetOptions opt;
+  // auto RM = llvm::Optional<llvm::Reloc::Model>();
+  // auto targetMachine =
+  //     target->createTargetMachine(targetTriple, CPU, features, opt, RM);
 
-  context.module->setDataLayout(targetMachine->createDataLayout());
-  std::vector<llvm::Type *> args;
-  auto mainProto = llvm::FunctionType::get(
-      llvm::Type::getInt64Ty(context.context), llvm::makeArrayRef(args), false);
-  auto mainFunction =
-      llvm::Function::Create(mainProto, llvm::GlobalValue::ExternalLinkage,
-                             "main", context.module.get());
-  context.staticLink.push_front(
-      llvm::StructType::create(context.context, "main"));
-  auto block = llvm::BasicBlock::Create(context.context, "entry", mainFunction);
-  context.types["int"] = context.intType;
-  context.types["string"] = context.stringType;
-  context.intrinsic();
-  traverse(mainVariableTable_, context);
-  if (context.hasError) return nullptr;
-  context.valueDecs.reset();
-  context.functionDecs.reset();
-  context.builder.SetInsertPoint(block);
-  std::vector<llvm::Type *> localVar;
-  for (auto &var : mainVariableTable_) {
-    localVar.push_back(var->getType());
-    context.valueDecs.push(var->getName(), var);
-  }
-  context.staticLink.front()->setBody(localVar);
-  context.currentFrame = context.createEntryBlockAlloca(
-      mainFunction, context.staticLink.front(), "mainframe");
-  context.currentLevel = 0;
+  // context.module->setDataLayout(targetMachine->createDataLayout());
+  // std::vector<llvm::Type *> args;
+  // auto mainProto = llvm::FunctionType::get(
+  //     llvm::Type::getInt64Ty(context.context), llvm::makeArrayRef(args), false);
+  // auto mainFunction =
+  //     llvm::Function::Create(mainProto, llvm::GlobalValue::ExternalLinkage,
+  //                            "main", context.module.get());
+  // context.staticLink.push_front(
+  //     llvm::StructType::create(context.context, "main"));
+  // auto block = llvm::BasicBlock::Create(context.context, "entry", mainFunction);
+  // context.types["int"] = context.intType;
+  // context.types["string"] = context.stringType;
+  // context.intrinsic();
+  // traverse(mainVariableTable_, context);
+  // if (context.hasError) return nullptr;
+  // context.valueDecs.reset();
+  // context.functionDecs.reset();
+  // context.builder.SetInsertPoint(block);
+  // std::vector<llvm::Type *> localVar;
+  // for (auto &var : mainVariableTable_) {
+  //   localVar.push_back(var->getType());
+  //   context.valueDecs.push(var->getName(), var);
+  // }
+  // context.staticLink.front()->setBody(localVar);
+  // context.currentFrame = context.createEntryBlockAlloca(
+  //     mainFunction, context.staticLink.front(), "mainframe");
+  // context.currentLevel = 0;
 
   // root_->codegen(context);
   // context.builder.CreateRet(llvm::ConstantInt::get(
@@ -235,53 +235,53 @@ llvm::Value *AST::AssignExp::codegen(CodeGenContext &context) {
 }
 
 llvm::Value *AST::IfExp::codegen(CodeGenContext &context) {
-   auto test = test_->codegen(context);
-   if (!test) return nullptr;
+  //  auto test = test_->codegen(context);
+  //  if (!test) return nullptr;
 
-   test = context.builder.CreateICmpNE(test, context.zero, "iftest");
-   auto function = context.builder.GetInsertBlock()->getParent();
+  //  test = context.builder.CreateICmpNE(test, context.zero, "iftest");
+  //  auto function = context.builder.GetInsertBlock()->getParent();
 
-   auto thenBB = llvm::BasicBlock::Create(context.context, "then", function);
-   auto elseBB = llvm::BasicBlock::Create(context.context, "else");
-   auto mergeBB = llvm::BasicBlock::Create(context.context, "ifcont");
+  //  auto thenBB = llvm::BasicBlock::Create(context.context, "then", function);
+  //  auto elseBB = llvm::BasicBlock::Create(context.context, "else");
+  //  auto mergeBB = llvm::BasicBlock::Create(context.context, "ifcont");
 
-   context.builder.CreateCondBr(test, thenBB, elseBB);
+  //  context.builder.CreateCondBr(test, thenBB, elseBB);
 
-   context.builder.SetInsertPoint(thenBB);
+  //  context.builder.SetInsertPoint(thenBB);
 
-   auto then = then_->codegen(context);
-   if (!then) return nullptr;
-   context.builder.CreateBr(mergeBB);
+  //  auto then = then_->codegen(context);
+  //  if (!then) return nullptr;
+  //  context.builder.CreateBr(mergeBB);
 
-   thenBB = context.builder.GetInsertBlock();
+  //  thenBB = context.builder.GetInsertBlock();
 
-   function->getBasicBlockList().push_back(elseBB);
-   context.builder.SetInsertPoint(elseBB);
+  //  function->getBasicBlockList().push_back(elseBB);
+  //  context.builder.SetInsertPoint(elseBB);
 
-   llvm::Value *elsee;
-   if (else_) {
-     elsee = else_->codegen(context);
-     if (!elsee) return nullptr;
-   }
+  //  llvm::Value *elsee;
+  //  if (else_) {
+  //    elsee = else_->codegen(context);
+  //    if (!elsee) return nullptr;
+  //  }
 
-   context.builder.CreateBr(mergeBB);
-   elseBB = context.builder.GetInsertBlock();
+  //  context.builder.CreateBr(mergeBB);
+  //  elseBB = context.builder.GetInsertBlock();
 
-   function->getBasicBlockList().push_back(mergeBB);
-   context.builder.SetInsertPoint(mergeBB);
+  //  function->getBasicBlockList().push_back(mergeBB);
+  //  context.builder.SetInsertPoint(mergeBB);
 
-   if (else_ && !then->getType()->isVoidTy() && !elsee->getType()->isVoidTy()) {
-     auto PN = context.builder.CreatePHI(then->getType(), 2, "iftmp");
-     then = context.convertNil(then, elsee);
-     elsee = context.convertNil(elsee, then);
-     PN->addIncoming(then, thenBB);
-     PN->addIncoming(elsee, elseBB);
+  //  if (else_ && !then->getType()->isVoidTy() && !elsee->getType()->isVoidTy()) {
+  //    auto PN = context.builder.CreatePHI(then->getType(), 2, "iftmp");
+  //    then = context.convertNil(then, elsee);
+  //    elsee = context.convertNil(elsee, then);
+  //    PN->addIncoming(then, thenBB);
+  //    PN->addIncoming(elsee, elseBB);
 
-     return PN;
-   } else {
-     return llvm::Constant::getNullValue(
-         llvm::Type::getInt64Ty(context.context));
-   }
+  //    return PN;
+  //  } else {
+  //    return llvm::Constant::getNullValue(
+  //        llvm::Type::getInt64Ty(context.context));
+  //  }
 }
 
 llvm::Value *AST::WhileExp::codegen(CodeGenContext &context) {
@@ -587,7 +587,7 @@ llvm::Value *AST::VarDec::codegen(CodeGenContext &context) {
   // // auto *variable = context.createEntryBlockAlloca(function, type_, name_);
   // //  if (isNil(init)) {
   // //    if (!type->isStructTy()) {
-  // //      return context.logErrorVV("Nil can only assign to struct type");
+  // //      return context.logErrorVV("Nil can only assign to record type");
   // //    } else {
   // //      init =
   // //      llvm::ConstantPointerNull::get(llvm::PointerType::getUnqual(type));

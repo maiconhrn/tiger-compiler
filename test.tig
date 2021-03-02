@@ -1,0 +1,44 @@
+let
+    type integer = int
+    var b : int := 8
+
+    function dummy(a : string, b : int) : int = (
+        "sdas";
+        1;
+        "dsa";
+        b;
+    )
+
+    type arrtype = array of string
+	var arr1 : arrtype := arrtype [2] of "opa"
+
+    type rectype = {name:string, age:int}
+	var rec1:rectype := rectype {name="Nobody", age=1000}
+
+    var c : string := "cccc"
+in
+    if b then "asdsa";
+    
+    arr1[0] := c;
+
+    nil;
+
+    rec1.age = 1;
+    rec1.name := c;
+    rec1.age := rec1.age;
+    
+
+    b := 1;
+
+    dummy(c, b);
+
+    let
+        var a := 8
+    in
+        if -b+a then
+            do (
+                rec1.age := rec1.age + 1;
+                b := b * 2;
+            ) while a
+    end
+end

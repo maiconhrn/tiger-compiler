@@ -7,7 +7,7 @@ QT       -= gui core
 LLVM = llvm-config-10
 
 TEMPLATE = app
-TARGET = tiger-compiler
+TARGET = tc
 
 INCLUDEPATH += $$system($$LLVM --includedir)
 
