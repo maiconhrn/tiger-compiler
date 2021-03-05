@@ -1,12 +1,19 @@
 let
     type integer = int
-    var b : int := 8
+    var b : integer := 8
 
     function dummy(a : string, b : int) : int = (
         "sdas";
         1;
         "dsa";
         b;
+    )
+
+    function dummy1(a : string, b : int) : int = (
+        "sdas";
+        1;
+        "dsa";
+        1;
     )
 
     type arrtype = array of string

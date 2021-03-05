@@ -80,7 +80,7 @@ namespace AST {
     public:
         Var(Location loc) : loc_(move(loc)) {}
 
-        Location &getLocation() {
+        Location &getLoc() {
             return loc_;
         }
     };
@@ -91,7 +91,7 @@ namespace AST {
     public:
         Exp(Location loc) : loc_(move(loc)) {}
 
-        Location &getLocation() {
+        Location &getLoc() {
             return loc_;
         }
     };
@@ -110,7 +110,7 @@ namespace AST {
         llvm::Type *traverse(vector<VarDec *> &variableTable,
                              CodeGenContext &context) override;
 
-        Location &getLocation() {
+        Location &getLoc() {
             return loc_;
         }
 
@@ -118,16 +118,15 @@ namespace AST {
     };
 
     class Dec : public Node {
-        Location loc_;
-
     protected:
+        Location loc_;
         Identifier name_;
 
     public:
         Dec(Location loc, Identifier name) :
                 loc_(move(loc)), name_(name) {}
 
-        Location &getLocation() {
+        Location &getLoc() {
             return loc_;
         }
     };
@@ -155,7 +154,7 @@ namespace AST {
         virtual llvm::Type *traverse(std::set<string> &parentName,
                                      CodeGenContext &context) = 0;
 
-        Location &getLocation() {
+        Location &getLoc() {
             return loc_;
         }
     };
@@ -343,7 +342,7 @@ namespace AST {
 
         VarDec *getVar() const { return varDec_; }
 
-        Location &getLocation() {
+        Location &getLoc() {
             return loc_;
         };
     };
@@ -555,7 +554,7 @@ namespace AST {
                   Identifier result)
                 : loc_(move(loc)), name_(name),
                   params_(move(params)),
-                  result_(move(result)) {
+                  result_(result) {
             reverse(params_.begin(), params_.end());
         }
 
@@ -582,8 +581,12 @@ namespace AST {
 
         VarDec *getStaticLink() const { return staticLink_; }
 
-        Location &getLocation() {
+        Location &getLoc() {
             return loc_;
+        }
+
+        Identifier & getResult() {
+            return result_;
         }
     };
 

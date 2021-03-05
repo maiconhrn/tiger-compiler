@@ -27,7 +27,7 @@ llvm::Type *AST::FieldVar::traverse(vector<VarDec *> &variableTable,
 
     if (!context.isRecord(var)) {
         return context.logErrorT("field reference is only for record type.",
-                                 var_->getLocation());
+                                 var_->getLoc());
     }
 
     llvm::StructType *eleType =
@@ -48,7 +48,7 @@ llvm::Type *AST::FieldVar::traverse(vector<VarDec *> &variableTable,
 
     if (idx_ >= typeDec->fields_.size()) {
         return context.logErrorT("field not exists in this struct",
-                                 var_->getLocation());
+                                 var_->getLoc());
     }
 
     type_ = typeDec->fields_[idx_]->getType();
@@ -62,7 +62,8 @@ llvm::Type *AST::SubscriptVar::traverse(vector<VarDec *> &variableTable,
         return nullptr;
     }
     if (!var->isPointerTy() || context.getElementType(var)->isStructTy()) {
-        return context.logErrorT("Subscript is only for array type", getLocation());
+        return context.logErrorT("Subscript is only for array type",
+                                 var_->getLoc());
     }
 
     type_ = context.getElementType(var);
@@ -71,7 +72,8 @@ llvm::Type *AST::SubscriptVar::traverse(vector<VarDec *> &variableTable,
         return nullptr;
     }
     if (!exp->isIntegerTy()) {
-        return context.logErrorT("Subscript should be integer", getLocation());
+        return context.logErrorT("Subscript should be integer",
+                                 var_->getLoc());
     }
 
     return type_;
@@ -102,7 +104,7 @@ llvm::Type *CallExp::traverse(vector<VarDec *> &variableTable,
     if (!function) {
         return context.logErrorT("Function " +
                                  func_.getName() +
-                                 " undeclared", getLocation());
+                                 " undeclared", func_.getLoc());
     }
     auto functionType = function->getFunctionType();
 
@@ -115,7 +117,7 @@ llvm::Type *CallExp::traverse(vector<VarDec *> &variableTable,
 
     if (args_.size() != functionType->getNumParams() - i) {
         return context.logErrorT("Incorrect number of passed arguments",
-                                 getLocation());
+                                 getLoc());
     }
 
     for (auto &exp : args_) {
@@ -123,7 +125,7 @@ llvm::Type *CallExp::traverse(vector<VarDec *> &variableTable,
         auto arg = functionType->getParamType(i++);
         if (arg != type) {
             return context.logErrorT("Params type not match",
-                                     getLocation());
+                                     exp->getLoc());
         }
     }
 
@@ -147,17 +149,17 @@ llvm::Type *BinaryExp::traverse(vector<VarDec *> &variableTable,
             if (left->isIntegerTy() && right->isIntegerTy())
                 return context.intType;
             else
-                return context.logErrorT("Binary expression require integers", getLocation());
+                return context.logErrorT("Binary expression require integers", getLoc());
         }
         case EQU:
         case NEQU: {
             if (context.isMatch(left, right)) {
                 if (context.isNil(left) && context.isNil(right))
-                    return context.logErrorT("Nil cannot compaire to nil", getLocation());
+                    return context.logErrorT("Nil cannot compaire to nil", getLoc());
                 else
                     return context.intType;
             } else
-                return context.logErrorT("Binary comparasion type not match", getLocation());
+                return context.logErrorT("Binary comparasion type not match", getLoc());
         }
         default:
             return nullptr;
@@ -167,8 +169,8 @@ llvm::Type *BinaryExp::traverse(vector<VarDec *> &variableTable,
 
 llvm::Type *Field::traverse(vector<VarDec *> &variableTable,
                             CodeGenContext &context) {
-    type_ = context.typeOf(getLocation(), typeName_.getName());
-    varDec_ = new VarDec(getLocation(),
+    type_ = context.typeOf(getLoc(), typeName_.getName());
+    varDec_ = new VarDec(getLoc(),
                          name_, type_,
                          variableTable.size(), context.currentLevel);
     context.valueDecs.push(name_.getName(), varDec_);
@@ -184,21 +186,21 @@ llvm::Type *FieldExp::traverse(vector<VarDec *> &variableTable,
 
 llvm::Type *RecordExp::traverse(vector<VarDec *> &variableTable,
                                 CodeGenContext &context) {
-    type_ = context.typeOf(typeName_->getLocation(), typeName_->getName().getName());
+    type_ = context.typeOf(typeName_->getLoc(), typeName_->getName().getName());
 
     if (!type_->isPointerTy()) {
-        return context.logErrorT("Require a record type", typeName_->getLocation());
+        return context.logErrorT("Require a record type", typeName_->getLoc());
     }
 
     auto eleType = context.getElementType(type_);
     if (!eleType->isStructTy()) {
-        return context.logErrorT("Require a record type", typeName_->getLocation());
+        return context.logErrorT("Require a record type", typeName_->getLoc());
     }
 
     auto typeDec = dynamic_cast<RecordType *>(context.typeDecs[typeName_->getName().getName()]);
     assert(typeDec);
     if (typeDec->fields_.size() != fieldExps_.size())
-        return context.logErrorT("Wrong number of fields", getLocation());
+        return context.logErrorT("Wrong number of fields", getLoc());
     size_t idx = 0u;
     for (auto &fieldDec : typeDec->fields_) {
         auto &field = fieldExps_[idx];
@@ -206,10 +208,10 @@ llvm::Type *RecordExp::traverse(vector<VarDec *> &variableTable,
             return context.logErrorT(
                     field->getName() +
                     " is not a field or not on the right position of "
-                    + typeName_->getName().getName(), getLocation());
+                    + typeName_->getName().getName(), getLoc());
         auto exp = field->traverse(variableTable, context);
         if (!context.isMatch(exp, fieldDec->getType()))
-            return context.logErrorT("Field type not match", getLocation());
+            return context.logErrorT("Field type not match", fieldDec->getLoc());
         ++idx;
     }
     // CHECK NIL
@@ -236,7 +238,7 @@ llvm::Type *AssignExp::traverse(vector<VarDec *> &variableTable,
     if (context.isMatch(var, exp))
         return exp;
     else
-        return context.logErrorT("Assign types do not match", getLocation());
+        return context.logErrorT("Assign types do not match", exp_->getLoc());
 }
 
 llvm::Type *IfExp::traverse(vector<VarDec *> &variableTable,
@@ -245,12 +247,12 @@ llvm::Type *IfExp::traverse(vector<VarDec *> &variableTable,
     if (!test) return nullptr;
     auto then = then_->traverse(variableTable, context);
     if (!then) return nullptr;
-    if (!test->isIntegerTy()) return context.logErrorT("Require integer in test", getLocation());
+    if (!test->isIntegerTy()) return context.logErrorT("Require integer in test", test_->getLoc());
     if (else_) {
         auto elsee = else_->traverse(variableTable, context);
         if (!elsee) return nullptr;
         if (!context.isMatch(then, elsee))
-            return context.logErrorT("Require same type in both branch", getLocation());
+            return context.logErrorT("Require same type in both branch", else_->getLoc());
     } else {
         return context.voidType;
     }
@@ -261,7 +263,7 @@ llvm::Type *WhileExp::traverse(vector<VarDec *> &variableTable,
                                CodeGenContext &context) {
     auto test = test_->traverse(variableTable, context);
     if (!test) return nullptr;
-    if (!test->isIntegerTy()) return context.logErrorT("Require integer", test_->getLocation());
+    if (!test->isIntegerTy()) return context.logErrorT("Require integer", test_->getLoc());
     body_->traverse(variableTable, context);
     return context.voidType;
 }
@@ -270,7 +272,7 @@ llvm::Type *DoWhileExp::traverse(vector<VarDec *> &variableTable,
                                  CodeGenContext &context) {
     auto test = test_->traverse(variableTable, context);
     if (!test) return nullptr;
-    if (!test->isIntegerTy()) return context.logErrorT("Require integer", test_->getLocation());
+    if (!test->isIntegerTy()) return context.logErrorT("Require integer", test_->getLoc());
     body_->traverse(variableTable, context);
     return context.voidType;
 }
@@ -288,10 +290,10 @@ llvm::Type *ForExp::traverse(vector<VarDec *> &variableTable,
     }
 
     if (!low->isIntegerTy() || !high->isIntegerTy()) {
-        return context.logErrorT("For bounds require integer", getLocation());
+        return context.logErrorT("For bounds require integer", getLoc());
     }
 
-    varDec_ = new VarDec(getLocation(),
+    varDec_ = new VarDec(getLoc(),
                          var_, context.intType,
                          variableTable.size(), context.currentLevel);
     variableTable.push_back(varDec_);
@@ -336,13 +338,13 @@ llvm::Type *TypeDec::traverse(vector<VarDec *> &, CodeGenContext &context) {
 
 llvm::Type *ArrayExp::traverse(vector<VarDec *> &variableTable,
                                CodeGenContext &context) {
-    type_ = context.typeOf(getLocation(), typeName_->getName().getName());
+    type_ = context.typeOf(getLoc(), typeName_->getName().getName());
 
     if (!type_) {
         return nullptr;
     }
     if (!type_->isPointerTy()) {
-        return context.logErrorT("Array type required", getLocation());
+        return context.logErrorT("Array type required", typeName_->getLoc());
     }
 
     auto eleType = context.getElementType(type_);
@@ -356,11 +358,11 @@ llvm::Type *ArrayExp::traverse(vector<VarDec *> &variableTable,
         return nullptr;
     }
     if (!size->isIntegerTy()) {
-        return context.logErrorT("Size should be integer", getLocation());
+        return context.logErrorT("Size should be integer", size_->getLoc());
     }
 
     if (eleType != init) {
-        return context.logErrorT("Initial type not matches", getLocation());
+        return context.logErrorT("Initial type not matches", init_->getLoc());
     }
 
     return type_;
@@ -373,8 +375,8 @@ llvm::FunctionType *Prototype::traverse(vector<VarDec *> &variableTable,
     auto linkType = llvm::PointerType::getUnqual(context.staticLink.front());
     args.push_back(linkType);
     frame = llvm::StructType::create(context.context, name_.getName() + "Frame");
-    staticLink_ = new VarDec(getLocation(),
-                             Identifier(getLocation(),
+    staticLink_ = new VarDec(getLoc(),
+                             Identifier(getLoc(),
                                         "staticLink"),
                              linkType, variableTable.size(),
                              context.currentLevel);
@@ -389,7 +391,7 @@ llvm::FunctionType *Prototype::traverse(vector<VarDec *> &variableTable,
     if (result_.getName().empty()) {
         resultType_ = llvm::Type::getVoidTy(context.context);
     } else {
-        resultType_ = context.typeOf(getLocation(), result_.getName());
+        resultType_ = context.typeOf(getLoc(), result_.getName());
     }
 
     if (!resultType_) {
@@ -405,7 +407,7 @@ llvm::FunctionType *Prototype::traverse(vector<VarDec *> &variableTable,
 llvm::Type *FunctionDec::traverse(vector<VarDec *> &, CodeGenContext &context) {
     if (context.functions.lookupOne(name_.getName()))
         return context.logErrorT("Function " + name_.getName() +
-                                 " is already defined in same scope.", getLocation());
+                                 " is already defined in same scope.", name_.getLoc());
     context.valueDecs.enter();
     level_ = ++context.currentLevel;
     auto proto = proto_->traverse(variableTable_, context);
@@ -419,7 +421,10 @@ llvm::Type *FunctionDec::traverse(vector<VarDec *> &, CodeGenContext &context) {
     --context.currentLevel;
     auto retType = proto_->getResultType();
     if (!retType->isVoidTy() && retType != body)
-        return context.logErrorT("Function return type not match", getLocation());
+        return context.logErrorT("Function return type not match",
+                                 proto_->getResult().getName().empty()
+                                 ? getLoc()
+                                 : proto_->getResult().getLoc());
     return context.voidType;
 }
 
@@ -428,7 +433,7 @@ llvm::Type *SimpleVar::traverse(vector<VarDec *> &, CodeGenContext &context) {
     auto type = context.valueDecs[name_.getName()];
     if (!type) {
         return context.logErrorT(name_.getName()
-                                 + " is not defined", getLocation());
+                                 + " is not defined", name_.getLoc());
     }
     return type->getType();
 }
@@ -438,7 +443,7 @@ llvm::Type *VarDec::traverse(vector<VarDec *> &variableTable,
     if (context.valueDecs.lookupOne(name_.getName()))
         return context.logErrorT(name_.getName()
                                  + " is already defined in this scope.",
-                                 getLocation());
+                                 name_.getLoc());
     offset_ = variableTable.size();
     level_ = context.currentLevel;
     variableTable.push_back(this);
@@ -451,7 +456,7 @@ llvm::Type *VarDec::traverse(vector<VarDec *> &variableTable,
                                typeName_->getName().getName());;
 
         if (!context.isMatch(type_, init)) {
-            return context.logErrorT("Type not match", typeName_->getLocation());
+            return context.logErrorT("Type not match", typeName_->getLoc());
         }
     }
 
@@ -472,11 +477,11 @@ llvm::Type *AST::ArrayType::traverse(std::set<std::string> &parentName,
     if (parentName.find(name_.getName()) != parentName.end()) {
         return context.logErrorT(name_.getName()
                                  + " has an endless loop of type define",
-                                 getLocation());
+                                 name_.getLoc());
     }
 
     parentName.insert(name_.getName());
-    auto type = context.typeOf(getLocation(), type_.getName(), parentName);
+    auto type = context.typeOf(getLoc(), type_.getName(), parentName);
     parentName.erase(name_.getName());
     if (!type) {
         return nullptr;
@@ -500,12 +505,12 @@ llvm::Type *AST::NameType::traverse(std::set<std::string> &parentName,
 
     if (parentName.find(name_.getName()) != parentName.end()) {
         return context.logErrorT(name_.getName() + " has an endless loop of type define",
-                                 getLocation());
+                                 name_.getLoc());
     }
 
     parentName.insert(name_.getName());
 
-    auto type = context.typeOf(getLocation(), type_.getName(), parentName);
+    auto type = context.typeOf(getLoc(), type_.getName(), parentName);
     parentName.erase(name_.getName());
     return type;
 }
@@ -522,7 +527,7 @@ llvm::Type *AST::RecordType::traverse(std::set<std::string> &parentName,
     }
     parentName.insert(name_.getName());
     for (auto &field : fields_) {
-        auto type = context.typeOf(getLocation(), field->typeName_.getName(), parentName);
+        auto type = context.typeOf(getLoc(), field->typeName_.getName(), parentName);
         if (!type) return nullptr;
         field->type_ = type;
         types.push_back(type);
