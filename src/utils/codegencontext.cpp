@@ -118,7 +118,7 @@ bool CodeGenContext::isMatch(llvm::Type *a, llvm::Type *b) {
 llvm::Type *CodeGenContext::logErrorT(std::string const &msg,
                                       AST::Location const &loc) {
     hasError = true;
-    std::cerr << loc.first_line_ << ":" << loc.first_column_ << ": "
+    std::cerr << loc.getFirstLine() << ":" << loc.getFirstColumn() << ": "
               << "Error: " << msg << std::endl;
     return nullptr;
 }

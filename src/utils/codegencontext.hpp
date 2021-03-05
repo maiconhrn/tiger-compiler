@@ -1,5 +1,5 @@
-#ifndef CODEGENCONTEXT_H
-#define CODEGENCONTEXT_H
+#ifndef CODEGENCONTEXT_HPP
+#define CODEGENCONTEXT_HPP
 
 #include "ast/ast.hpp"
 #include <llvm/IR/Constant.h>
@@ -38,8 +38,7 @@ public:
     bool hasError{false};
     llvm::LLVMContext context;
     llvm::IRBuilder<> builder{context};
-    std::unique_ptr<llvm::Module> module{
-            std::make_unique<llvm::Module>("main", context)};
+    std::unique_ptr<llvm::Module> module{std::make_unique<llvm::Module>("main", context)};
     SymbolTable<AST::VarDec> valueDecs;
     SymbolTable<llvm::Type> types;
     SymbolTable<AST::Type> typeDecs;
@@ -50,26 +49,22 @@ public:
     std::deque<llvm::StructType *> staticLink;
     llvm::AllocaInst *currentFrame;
     size_t currentLevel = 0;
-
     llvm::Type *intType{llvm::Type::getInt64Ty(context)};
     llvm::Type *voidType{llvm::Type::getVoidTy(context)};
-    llvm::Type *stringType{
-            llvm::PointerType::getUnqual(llvm::Type::getInt8Ty(context))};
-    llvm::PointerType *nilType{
-            llvm::PointerType::getUnqual(llvm::StructType::get(context))};
+    llvm::Type *stringType{llvm::PointerType::getUnqual(llvm::Type::getInt8Ty(context))};
+    llvm::PointerType *nilType{llvm::PointerType::getUnqual(llvm::StructType::get(context))};
     // llvm::Type *stringType{llvm::Type::getInt64Ty(context)};
     llvm::Function *allocaArrayFunction{createIntrinsicFunction(
             "allocaArray",
             {llvm::Type::getInt64Ty(context), llvm::Type::getInt64Ty(context)},
             llvm::Type::getInt8PtrTy(context))};
-    llvm::Function *allocaRecordFunction = {
-            createIntrinsicFunction("allocaRecord", {llvm::Type::getInt64Ty(context)},
-                                    llvm::Type::getInt8PtrTy(context))};
-    llvm::Function *strCmpFunction = {
-            createIntrinsicFunction("strcmp_", {stringType, stringType}, intType)};
-    std::stack<
-            std::tuple<llvm::BasicBlock * /*next*/, llvm::BasicBlock * /*after*/>>
-            loopStack;
+    llvm::Function *allocaRecordFunction =
+            {createIntrinsicFunction("allocaRecord",
+                                     {llvm::Type::getInt64Ty(context)},
+                                     llvm::Type::getInt8PtrTy(context))};
+    llvm::Function *strCmpFunction =
+            {createIntrinsicFunction("strcmp_", {stringType, stringType}, intType)};
+    std::stack<std::tuple<llvm::BasicBlock * /*next*/, llvm::BasicBlock * /*after*/>> loopStack;
     llvm::Value *zero{llvm::ConstantInt::get(intType, llvm::APInt(64, 0))};
     llvm::Value *one{llvm::ConstantInt::get(intType, llvm::APInt(64, 1))};
 
@@ -111,4 +106,4 @@ public:
     CodeGenContext();
 };
 
-#endif  // CODEGENCONTEXT_H
+#endif  // CODEGENCONTEXT_HPP

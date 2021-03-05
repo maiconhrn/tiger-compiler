@@ -1,5 +1,5 @@
-#ifndef SYMBOLTABLE_H
-#define SYMBOLTABLE_H
+#ifndef SYMBOLTABLE_HPP
+#define SYMBOLTABLE_HPP
 
 #include <deque>
 #include <memory>
@@ -88,4 +88,4 @@ void SymbolTable<T>::reset() {
     enter();
 }
 
-#endif  // SYMBOLTABLE_H
+#endif  // SYMBOLTABLE_HPP

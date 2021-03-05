@@ -1,5 +1,5 @@
-#ifndef AST_H
-#define AST_H
+#ifndef AST_HPP
+#define AST_HPP
 
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Value.h>
@@ -36,31 +36,64 @@ namespace AST {
     };
 
     class Location {
-    public:
         int first_line_;
         int first_column_;
 
     public:
         Location(int first_line, int first_column) :
                 first_line_(first_line), first_column_(first_column) {}
+
+        virtual ~Location() = default;
+
+        int getFirstLine() const {
+            return first_line_;
+        }
+
+        int getFirstColumn() const {
+            return first_column_;
+        }
+    };
+
+
+    class Identifier {
+        Location loc_;
+        string name_;
+
+    public:
+        Identifier(Location loc, string name) :
+                loc_(move(loc)), name_(name) {}
+
+        virtual ~Identifier() = default;
+
+        Location &getLoc() {
+            return loc_;
+        }
+
+        string &getName() {
+            return name_;
+        }
     };
 
     class Var : public Node {
         Location loc_;
 
     public:
-        Var(Location loc) : loc_(loc) {}
+        Var(Location loc) : loc_(move(loc)) {}
 
-        Location &getLocation();
+        Location &getLocation() {
+            return loc_;
+        }
     };
 
     class Exp : public Node {
         Location loc_;
 
     public:
-        Exp(Location loc) : loc_(loc) {}
+        Exp(Location loc) : loc_(move(loc)) {}
 
-        Location &getLocation();
+        Location &getLocation() {
+            return loc_;
+        }
     };
 
     class Root : public Node {
@@ -70,14 +103,16 @@ namespace AST {
 
     public:
         Root(Location loc, unique_ptr<Exp> root) :
-                loc_(loc), root_(move(root)) {}
+                loc_(move(loc)), root_(move(root)) {}
 
         Value *codegen(CodeGenContext &context) override;
 
         llvm::Type *traverse(vector<VarDec *> &variableTable,
                              CodeGenContext &context) override;
 
-        Location &getLocation();
+        Location &getLocation() {
+            return loc_;
+        }
 
         bool semanticAnalisys();
     };
@@ -86,42 +121,51 @@ namespace AST {
         Location loc_;
 
     protected:
-        string name_;
+        Identifier name_;
 
     public:
-        Dec(Location loc, string name) :
-                loc_(loc), name_(move(name)) {}
+        Dec(Location loc, Identifier name) :
+                loc_(move(loc)), name_(name) {}
 
-        Location &getLocation();
+        Location &getLocation() {
+            return loc_;
+        }
     };
 
     class Type {
         Location loc_;
 
     protected:
-        string name_;
+        Identifier name_;
 
     public:
-        Type(Location loc) : loc_(loc) {}
+        Type(Location loc, Identifier name) :
+                loc_(move(loc)), name_(name) {}
 
-        void setName(string name) { name_ = move(name); }
+        void setName(const Identifier &name) {
+            name_ = name;
+        }
 
-        const string &getName() const { return name_; }
+        Identifier &getName() {
+            return name_;
+        }
 
         virtual ~Type() = default;
 
         virtual llvm::Type *traverse(std::set<string> &parentName,
                                      CodeGenContext &context) = 0;
 
-        Location &getLocation();
+        Location &getLocation() {
+            return loc_;
+        }
     };
 
     class SimpleVar : public Var {
-        string name_;
+        Identifier name_;
 
     public:
-        SimpleVar(Location loc, string name) :
-                Var(loc), name_(move(name)) {}
+        SimpleVar(Location loc, Identifier name) :
+                Var(move(loc)), name_(name) {}
 
         Value *codegen(CodeGenContext &context) override;
 
@@ -131,13 +175,15 @@ namespace AST {
 
     class FieldVar : public Var {
         unique_ptr<Var> var_;
-        string field_;
+        Identifier field_;
         llvm::Type *type_{nullptr};
         size_t idx_{0u};
 
     public:
-        FieldVar(Location loc, unique_ptr<Var> var, string field)
-                : Var(loc), var_(move(var)), field_(move(field)) {}
+        FieldVar(Location loc, unique_ptr<Var> var,
+                 Identifier field)
+                : Var(move(loc)), var_(move(var)),
+                  field_(move(field)) {}
 
         Value *codegen(CodeGenContext &context) override;
 
@@ -152,7 +198,7 @@ namespace AST {
 
     public:
         SubscriptVar(Location loc, unique_ptr<Var> var, unique_ptr<Exp> exp)
-                : Var(loc), var_(move(var)), exp_(move(exp)) {}
+                : Var(move(loc)), var_(move(var)), exp_(move(exp)) {}
 
         Value *codegen(CodeGenContext &context) override;
 
@@ -165,7 +211,7 @@ namespace AST {
 
     public:
         VarExp(Location loc, unique_ptr<Var> var) :
-                Exp(loc), var_(move(var)) {}
+                Exp(move(loc)), var_(move(var)) {}
 
         Value *codegen(CodeGenContext &context) override;
 
@@ -178,7 +224,7 @@ namespace AST {
         llvm::Type *type_{nullptr};
     public:
         NilExp(Location loc) :
-                Exp(loc) {};
+                Exp(move(loc)) {};
 
         Value *codegen(CodeGenContext &context) override;
 
@@ -193,7 +239,7 @@ namespace AST {
 
     public:
         IntExp(Location loc, int const &val) :
-                Exp(loc), val_(val) {}
+                Exp(move(loc)), val_(val) {}
 
         Value *codegen(CodeGenContext &context) override;
 
@@ -202,11 +248,11 @@ namespace AST {
     };
 
     class StringExp : public Exp {
-        string val_;
+        Identifier val_;
 
     public:
-        StringExp(Location loc, string val) :
-                Exp(loc), val_(move(val)) {}
+        StringExp(Location loc, Identifier val) :
+                Exp(move(loc)), val_(move(val)) {}
 
         Value *codegen(CodeGenContext &context) override;
 
@@ -215,12 +261,13 @@ namespace AST {
     };
 
     class CallExp : public Exp {
-        string func_;
+        Identifier func_;
         vector<unique_ptr<Exp>> args_;
 
     public:
-        CallExp(Location loc, string func, vector<unique_ptr<Exp>> args)
-                : Exp(loc), func_(move(func)), args_(move(args)) {
+        CallExp(Location loc, Identifier func,
+                vector<unique_ptr<Exp>> args)
+                : Exp(move(loc)), func_(move(func)), args_(move(args)) {
             reverse(args_.begin(), args_.end());
         }
 
@@ -261,7 +308,7 @@ namespace AST {
     public:
         BinaryExp(Location loc, Operator const &op,
                   unique_ptr<Exp> left, unique_ptr<Exp> right)
-                : Exp(loc), op_(op),
+                : Exp(move(loc)), op_(op),
                   left_(move(left)), right_(move(right)) {}
 
         Value *codegen(CodeGenContext &context) override;
@@ -274,39 +321,51 @@ namespace AST {
         friend class RecordType;
 
         Location loc_;
-        string name_;
-        string typeName_;
+        Identifier name_;
+        Identifier typeName_;
         llvm::Type *type_{nullptr};
         VarDec *varDec_{nullptr};
 
     public:
-        Field(Location loc, string name, string type) :
-                loc_(loc), name_(move(name)), typeName_(move(type)) {}
+        Field(Location loc,
+              Identifier name,
+              Identifier type) :
+                loc_(move(move(loc))), name_(name), typeName_(type) {}
 
         llvm::Type *traverse(vector<VarDec *> &variableTable,
                              CodeGenContext &context);
 
         llvm::Type *getType() const { return type_; }
 
-        const string &getName() const { return name_; }
+        string &getName() {
+            return name_.getName();
+        }
 
         VarDec *getVar() const { return varDec_; }
 
-        Location &getLocation();
+        Location &getLocation() {
+            return loc_;
+        };
     };
 
     class FieldExp : public Exp {
         friend class RecordExp;
 
-        string name_;
+        Identifier name_;
         unique_ptr<Exp> exp_;
         llvm::Type *type_;
 
     public:
-        FieldExp(Location loc, string name, unique_ptr<Exp> exp)
-                : Exp(loc), name_(move(name)), exp_(move(exp)) {}
+        FieldExp(Location loc,
+                 Identifier name,
+                 unique_ptr<Exp> exp)
+                : Exp(move(loc)),
+                  name_(name),
+                  exp_(move(exp)) {}
 
-        const string &getName() const { return name_; }
+        string &getName() {
+            return name_.getName();
+        }
 
         Value *codegen(CodeGenContext &context) override;
 
@@ -314,18 +373,20 @@ namespace AST {
                              CodeGenContext &context) override;
     };
 
+    class NameType;
+
     class RecordExp : public Exp {
         friend class RecordType;
 
-        int first_line_;
-        int first_column_;
-        string typeName_;
+        unique_ptr<NameType> typeName_;
         vector<unique_ptr<FieldExp>> fieldExps_;
         llvm::Type *type_{nullptr};
 
     public:
-        RecordExp(Location loc, string type, vector<unique_ptr<FieldExp>> fieldExps)
-                : Exp(loc), typeName_(move(type)), fieldExps_(move(fieldExps)) {
+        RecordExp(Location loc, unique_ptr<NameType> type,
+                  vector<unique_ptr<FieldExp>> fieldExps)
+                : Exp(move(loc)), typeName_(move(type)),
+                  fieldExps_(move(fieldExps)) {
             reverse(fieldExps_.begin(), fieldExps_.end());
         }
 
@@ -340,7 +401,7 @@ namespace AST {
 
     public:
         SequenceExp(Location loc, vector<unique_ptr<Exp>> exps) :
-                Exp(loc), exps_(move(exps)) {
+                Exp(move(loc)), exps_(move(exps)) {
             reverse(exps_.begin(), exps_.end());
         }
 
@@ -356,7 +417,7 @@ namespace AST {
 
     public:
         AssignExp(Location loc, unique_ptr<Var> var, unique_ptr<Exp> exp)
-                : Exp(loc), var_(move(var)), exp_(move(exp)) {}
+                : Exp(move(loc)), var_(move(var)), exp_(move(exp)) {}
 
         Value *codegen(CodeGenContext &context) override;
 
@@ -372,7 +433,7 @@ namespace AST {
     public:
         IfExp(Location loc, unique_ptr<Exp> test,
               unique_ptr<Exp> then, unique_ptr<Exp> elsee)
-                : Exp(loc), test_(move(test)), then_(move(then)), else_(move(elsee)) {}
+                : Exp(move(loc)), test_(move(test)), then_(move(then)), else_(move(elsee)) {}
 
         Value *codegen(CodeGenContext &context) override;
 
@@ -386,7 +447,7 @@ namespace AST {
 
     public:
         WhileExp(Location loc, unique_ptr<Exp> test, unique_ptr<Exp> body)
-                : Exp(loc), test_(move(test)), body_(move(body)) {}
+                : Exp(move(loc)), test_(move(test)), body_(move(body)) {}
 
         Value *codegen(CodeGenContext &context) override;
 
@@ -400,7 +461,7 @@ namespace AST {
 
     public:
         DoWhileExp(Location loc, unique_ptr<Exp> body, unique_ptr<Exp> test)
-                : Exp(loc), body_(move(body)), test_(move(test)) {}
+                : Exp(move(loc)), body_(move(body)), test_(move(test)) {}
 
         Value *codegen(CodeGenContext &context) override;
 
@@ -409,7 +470,7 @@ namespace AST {
     };
 
     class ForExp : public Exp {
-        string var_;
+        Identifier var_;
         unique_ptr<Exp> low_;
         unique_ptr<Exp> high_;
         unique_ptr<Exp> body_;
@@ -417,9 +478,12 @@ namespace AST {
         VarDec *varDec_{nullptr};
 
     public:
-        ForExp(Location loc, string var, unique_ptr<Exp> low, unique_ptr<Exp> high,
+        ForExp(Location loc,
+               Identifier var,
+               unique_ptr<Exp> low,
+               unique_ptr<Exp> high,
                unique_ptr<Exp> body)
-                : Exp(loc),
+                : Exp(move(loc)),
                   var_(move(var)),
                   low_(move(low)),
                   high_(move(high)),
@@ -434,7 +498,7 @@ namespace AST {
     class BreakExp : public Exp {
         // dummpy body
     public:
-        BreakExp(Location loc) : Exp(loc) {}
+        BreakExp(Location loc) : Exp(move(loc)) {}
 
         Value *codegen(CodeGenContext &context) override;
 
@@ -449,7 +513,7 @@ namespace AST {
 
     public:
         LetExp(Location loc, vector<unique_ptr<Dec>> decs, unique_ptr<Exp> body)
-                : Exp(loc), decs_(move(decs)), body_(move(body)) {
+                : Exp(move(loc)), decs_(move(decs)), body_(move(body)) {
             reverse(decs_.begin(), decs_.end());
         }
 
@@ -460,14 +524,14 @@ namespace AST {
     };
 
     class ArrayExp : public Exp {
-        string typeName_;
+        unique_ptr<NameType> typeName_;
         unique_ptr<Exp> size_;
         unique_ptr<Exp> init_;
         llvm::Type *type_{nullptr};
 
     public:
-        ArrayExp(Location loc, string type, unique_ptr<Exp> size, unique_ptr<Exp> init)
-                : Exp(loc), typeName_(move(type)), size_(move(size)), init_(move(init)) {}
+        ArrayExp(Location loc, unique_ptr<NameType> type, unique_ptr<Exp> size, unique_ptr<Exp> init)
+                : Exp(move(loc)), typeName_(move(type)), size_(move(size)), init_(move(init)) {}
 
         Value *codegen(CodeGenContext &context) override;
 
@@ -477,26 +541,33 @@ namespace AST {
 
     class Prototype {
         Location loc_;
-        string name_;
+        Identifier name_;
         vector<unique_ptr<Field>> params_;
-        string result_;
+        Identifier result_;
         llvm::Type *resultType_{nullptr};
         llvm::Function *function_{nullptr};
         VarDec *staticLink_{nullptr};
         llvm::StructType *frame{nullptr};
 
     public:
-        Prototype(Location loc, string name,
-                  vector<unique_ptr<Field>> params, string result)
-                : loc_(loc), name_(move(name)), params_(move(params)), result_(move(result)) {
+        Prototype(Location loc, Identifier name,
+                  vector<unique_ptr<Field>> params,
+                  Identifier result)
+                : loc_(move(loc)), name_(name),
+                  params_(move(params)),
+                  result_(move(result)) {
             reverse(params_.begin(), params_.end());
         }
 
         llvm::Function *codegen(CodeGenContext &context);
 
-        const string &getName() const { return name_; }
+        string &getName() {
+            return name_.getName();
+        }
 
-        void rename(string name) { name_ = move(name); }
+        void rename(Identifier name) {
+            name_ = move(name);
+        }
 
         const vector<unique_ptr<Field>> &getParams() const { return params_; }
 
@@ -511,7 +582,9 @@ namespace AST {
 
         VarDec *getStaticLink() const { return staticLink_; }
 
-        Location &getLocation();
+        Location &getLocation() {
+            return loc_;
+        }
     };
 
     class FunctionDec : public Dec {
@@ -521,41 +594,49 @@ namespace AST {
         size_t level_{0u};
 
     public:
-        FunctionDec(Location loc, string name,
+        FunctionDec(Location loc, Identifier name,
                     unique_ptr<Prototype> proto, unique_ptr<Exp> body)
-                : Dec(loc, move(name)), proto_(move(proto)), body_(move(body)) {}
+                : Dec(move(loc), move(name)), proto_(move(proto)), body_(move(body)) {}
 
         Value *codegen(CodeGenContext &context) override;
 
         llvm::Type *traverse(vector<VarDec *> &variableTable,
                              CodeGenContext &context) override;
 
-        Prototype &getProto() const { return *proto_; }
+        Prototype &getProto() const {
+            return *proto_;
+        }
 
-        size_t getLevel() const { return level_; }
+        size_t getLevel() const {
+            return level_;
+        }
     };
 
+    class NameType;
+
     class VarDec : public Dec {
-        string typeName_;
+        unique_ptr<NameType> typeName_;
         unique_ptr<Exp> init_{nullptr};
-        // bool escape;
+        // bool escape;VarDec
         size_t offset_;
         size_t level_;
         llvm::Type *type_{nullptr};
 
     public:
-        VarDec(Location loc, string name, string type, unique_ptr<Exp> init)
-                : Dec(loc, move(name)), typeName_(move(type)), init_(move(init)) {}
+        VarDec(Location loc, Identifier name, unique_ptr<NameType> type, unique_ptr<Exp> init)
+                : Dec(move(loc), move(name)), typeName_(move(type)), init_(move(init)) {}
 
-        VarDec(Location loc, string name, llvm::Type *type, size_t const &offset,
+        VarDec(Location loc, Identifier name, llvm::Type *type, size_t const &offset,
                size_t const &level)
-                : Dec(loc, move(name)), offset_(offset), level_(level), type_(type) {}
+                : Dec(move(loc), move(name)), offset_(offset), level_(level), type_(type) {}
 
         Value *codegen(CodeGenContext &context) override;
 
         llvm::Type *getType() const { return type_; }
 
-        const string &getName() const { return name_; }
+        string &getName() {
+            return name_.getName();
+        }
 
         llvm::Value *read(CodeGenContext &context) const;
 
@@ -567,8 +648,10 @@ namespace AST {
         unique_ptr<Type> type_;
 
     public:
-        TypeDec(Location loc, string name, unique_ptr<Type> type)
-                : Dec(loc, move(name)), type_(move(type)) {}
+        TypeDec(Location loc,
+                Identifier name,
+                unique_ptr<Type> type)
+                : Dec(move(loc), move(name)), type_(move(type)) {}
 
         Value *codegen(CodeGenContext &context) override;
 
@@ -577,11 +660,13 @@ namespace AST {
     };
 
     class NameType : public Type {
-        string type_;
+        Identifier type_;
 
     public:
-        NameType(Location loc, string type) :
-                Type(loc), type_(move(type)) {}
+        NameType(Location loc, Identifier type) :
+
+                Type(move(loc), type),
+                type_(type) {}
 
         llvm::Type *traverse(std::set<string> &parentName,
                              CodeGenContext &context) override;
@@ -596,7 +681,7 @@ namespace AST {
 
     public:
         RecordType(Location loc, vector<unique_ptr<Field>> fields) :
-                Type(loc), fields_(move(fields)) {
+                Type(move(loc), Identifier(loc, "")), fields_(move(fields)) {
             reverse(fields_.begin(), fields_.end());
         }
 
@@ -605,12 +690,12 @@ namespace AST {
     };
 
     class ArrayType : public Type {
-        string type_;
+        Identifier type_;
 
     protected:
     public:
-        ArrayType(Location loc, string type) :
-                Type(loc), type_(move(type)) {}
+        ArrayType(Location loc, Identifier type) :
+                Type(move(loc), Identifier(loc, "")), type_(type) {}
 
         llvm::Type *traverse(std::set<string> &parentName,
                              CodeGenContext &context) override;
@@ -618,4 +703,4 @@ namespace AST {
 
 }  // namespace AST
 
-#endif  // AST_H
+#endif  // AST_HPP
