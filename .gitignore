@@ -5,6 +5,7 @@ tiger.parser.hpp
 tiger.lexer.cpp
 */*.output
 *test*.in
+Makefile
 
 # Created by https://www.toptal.com/developers/gitignore/api/clion+all
 # Edit at https://www.toptal.com/developers/gitignore?templates=clion+all
