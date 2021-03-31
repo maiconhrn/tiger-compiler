@@ -9,6 +9,7 @@
 #include <set>
 #include <string>
 #include <vector>
+#include <iostream>
 
 class CodeGenContext;
 namespace AST {
@@ -19,20 +20,33 @@ namespace AST {
     using std::string;
     using std::unique_ptr;
     using std::vector;
+    using std::cout;
+    using std::cerr;
+    using std::endl;
+
+    const static std::string TAB = "  ";
 
     class VarDec;
 
     class Node {
-        size_t pos_;
+        size_t depth_ = 0;
 
     public:
         virtual ~Node() = default;
 
         virtual Value *codegen(CodeGenContext &context) = 0;
 
-        void setPos(const size_t &pos) { pos_ = pos; }
+        size_t &getDepth() {
+            return depth_;
+        }
+
+        void setDepth(const size_t &depth) {
+            depth_ = depth;
+        }
 
         virtual llvm::Type *traverse(vector<VarDec *> &, CodeGenContext &) = 0;
+
+        virtual void print(int depth) = 0;
     };
 
     class Location {
@@ -55,7 +69,7 @@ namespace AST {
     };
 
 
-    class Identifier {
+    class Identifier : public Node {
         Location loc_;
         string name_;
 
@@ -72,6 +86,16 @@ namespace AST {
         string &getName() {
             return name_;
         }
+
+        Value *codegen(CodeGenContext &context) override {
+            return nullptr;
+        }
+
+        llvm::Type *traverse(vector<VarDec *> &vector, CodeGenContext &context) override {
+            return nullptr;
+        }
+
+        void print(int depth) override;
     };
 
     class Var : public Node {
@@ -83,6 +107,10 @@ namespace AST {
         Location &getLoc() {
             return loc_;
         }
+
+        void print(int depth) override {
+            std::cerr << "Print not implented" << endl;
+        }
     };
 
     class Exp : public Node {
@@ -93,6 +121,10 @@ namespace AST {
 
         Location &getLoc() {
             return loc_;
+        }
+
+        void print(int depth) override {
+            std::cerr << "Print not implented" << endl;
         }
     };
 
@@ -115,6 +147,8 @@ namespace AST {
         }
 
         bool semanticAnalisys();
+
+        void print(int depth) override;
     };
 
     class Dec : public Node {
@@ -128,6 +162,10 @@ namespace AST {
 
         Location &getLoc() {
             return loc_;
+        }
+
+        void print(int depth) override {
+            std::cerr << "Print not implented" << endl;
         }
     };
 
@@ -157,6 +195,8 @@ namespace AST {
         Location &getLoc() {
             return loc_;
         }
+
+        virtual void print(int depth) = 0;
     };
 
     class SimpleVar : public Var {
@@ -170,6 +210,8 @@ namespace AST {
 
         llvm::Type *traverse(vector<VarDec *> &variableTable,
                              CodeGenContext &context) override;
+
+        void print(int depth) override;
     };
 
     class FieldVar : public Var {
@@ -188,6 +230,8 @@ namespace AST {
 
         llvm::Type *traverse(vector<VarDec *> &variableTable,
                              CodeGenContext &context) override;
+
+        void print(int depth) override;
     };
 
     class SubscriptVar : public Var {
@@ -203,6 +247,8 @@ namespace AST {
 
         llvm::Type *traverse(vector<VarDec *> &variableTable,
                              CodeGenContext &context) override;
+
+        void print(int depth) override;
     };
 
     class VarExp : public Exp {
@@ -216,6 +262,8 @@ namespace AST {
 
         llvm::Type *traverse(vector<VarDec *> &variableTable,
                              CodeGenContext &context) override;
+
+        void print(int depth) override;
     };
 
     class NilExp : public Exp {
@@ -231,6 +279,8 @@ namespace AST {
                              CodeGenContext &context) override;
 
         void setType(llvm::Type *type) { type_ = type; }
+
+        void print(int depth) override;
     };
 
     class IntExp : public Exp {
@@ -244,19 +294,23 @@ namespace AST {
 
         llvm::Type *traverse(vector<VarDec *> &variableTable,
                              CodeGenContext &context) override;
+
+        void print(int depth) override;
     };
 
     class StringExp : public Exp {
-        Identifier val_;
+        string val_;
 
     public:
-        StringExp(Location loc, Identifier val) :
+        StringExp(Location loc, string val) :
                 Exp(move(loc)), val_(move(val)) {}
 
         Value *codegen(CodeGenContext &context) override;
 
         llvm::Type *traverse(vector<VarDec *> &variableTable,
                              CodeGenContext &context) override;
+
+        void print(int depth) override;
     };
 
     class CallExp : public Exp {
@@ -274,6 +328,8 @@ namespace AST {
 
         llvm::Type *traverse(vector<VarDec *> &variableTable,
                              CodeGenContext &context) override;
+
+        void print(int depth) override;
     };
 
 // TODO: UnaryExp
@@ -314,6 +370,8 @@ namespace AST {
 
         llvm::Type *traverse(vector<VarDec *> &variableTable,
                              CodeGenContext &context) override;
+
+        void print(int depth) override;
     };
 
     class Field {
@@ -345,6 +403,8 @@ namespace AST {
         Location &getLoc() {
             return loc_;
         };
+
+        void print(int depth);
     };
 
     class FieldExp : public Exp {
@@ -370,6 +430,8 @@ namespace AST {
 
         llvm::Type *traverse(vector<VarDec *> &variableTable,
                              CodeGenContext &context) override;
+
+        void print(int depth) override;
     };
 
     class NameType;
@@ -393,6 +455,8 @@ namespace AST {
 
         llvm::Type *traverse(vector<VarDec *> &variableTable,
                              CodeGenContext &context) override;
+
+        void print(int depth) override;
     };
 
     class SequenceExp : public Exp {
@@ -408,6 +472,8 @@ namespace AST {
 
         llvm::Type *traverse(vector<VarDec *> &variableTable,
                              CodeGenContext &context) override;
+
+        void print(int depth) override;
     };
 
     class AssignExp : public Exp {
@@ -422,6 +488,8 @@ namespace AST {
 
         llvm::Type *traverse(vector<VarDec *> &variableTable,
                              CodeGenContext &context) override;
+
+        void print(int depth) override;
     };
 
     class IfExp : public Exp {
@@ -432,12 +500,15 @@ namespace AST {
     public:
         IfExp(Location loc, unique_ptr<Exp> test,
               unique_ptr<Exp> then, unique_ptr<Exp> elsee)
-                : Exp(move(loc)), test_(move(test)), then_(move(then)), else_(move(elsee)) {}
+                : Exp(move(loc)), test_(move(test)),
+                  then_(move(then)), else_(move(elsee)) {}
 
         Value *codegen(CodeGenContext &context) override;
 
         llvm::Type *traverse(vector<VarDec *> &variableTable,
                              CodeGenContext &context) override;
+
+        void print(int depth) override;
     };
 
     class WhileExp : public Exp {
@@ -452,6 +523,8 @@ namespace AST {
 
         llvm::Type *traverse(vector<VarDec *> &variableTable,
                              CodeGenContext &context) override;
+
+        void print(int depth) override;
     };
 
     class DoWhileExp : public Exp {
@@ -466,6 +539,8 @@ namespace AST {
 
         llvm::Type *traverse(vector<VarDec *> &variableTable,
                              CodeGenContext &context) override;
+
+        void print(int depth) override;
     };
 
     class ForExp : public Exp {
@@ -492,10 +567,11 @@ namespace AST {
 
         llvm::Type *traverse(vector<VarDec *> &variableTable,
                              CodeGenContext &context) override;
+
+        void print(int depth) override;
     };
 
     class BreakExp : public Exp {
-        // dummpy body
     public:
         BreakExp(Location loc) : Exp(move(loc)) {}
 
@@ -504,6 +580,7 @@ namespace AST {
         llvm::Type *traverse(vector<VarDec *> &variableTable,
                              CodeGenContext &context) override;
 
+        void print(int depth) override;
     };
 
     class LetExp : public Exp {
@@ -520,6 +597,8 @@ namespace AST {
 
         llvm::Type *traverse(vector<VarDec *> &variableTable,
                              CodeGenContext &context) override;
+
+        void print(int depth) override;
     };
 
     class ArrayExp : public Exp {
@@ -536,6 +615,8 @@ namespace AST {
 
         llvm::Type *traverse(vector<VarDec *> &variableTable,
                              CodeGenContext &context) override;
+
+        void print(int depth) override;
     };
 
     class Prototype {
@@ -585,9 +666,11 @@ namespace AST {
             return loc_;
         }
 
-        Identifier & getResult() {
+        Identifier &getResult() {
             return result_;
         }
+
+        void print(int depth);
     };
 
     class FunctionDec : public Dec {
@@ -613,6 +696,8 @@ namespace AST {
         size_t getLevel() const {
             return level_;
         }
+
+        void print(int depth) override;
     };
 
     class NameType;
@@ -645,6 +730,8 @@ namespace AST {
 
         llvm::Type *traverse(vector<VarDec *> &variableTable,
                              CodeGenContext &context) override;
+
+        void print(int depth) override;
     };
 
     class TypeDec : public Dec {
@@ -660,6 +747,8 @@ namespace AST {
 
         llvm::Type *traverse(vector<VarDec *> &variableTable,
                              CodeGenContext &context) override;
+
+        void print(int depth) override;
     };
 
     class NameType : public Type {
@@ -673,6 +762,8 @@ namespace AST {
 
         llvm::Type *traverse(std::set<string> &parentName,
                              CodeGenContext &context) override;
+
+        void print(int depth) override;
     };
 
     class RecordType : public Type {
@@ -690,6 +781,8 @@ namespace AST {
 
         llvm::Type *traverse(std::set<string> &parentName,
                              CodeGenContext &context) override;
+
+        void print(int depth) override;
     };
 
     class ArrayType : public Type {
@@ -702,6 +795,8 @@ namespace AST {
 
         llvm::Type *traverse(std::set<string> &parentName,
                              CodeGenContext &context) override;
+
+        void print(int depth) override;
     };
 
 }  // namespace AST

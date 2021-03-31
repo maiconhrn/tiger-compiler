@@ -37,6 +37,12 @@ void semanticAnalisys() {
     }
 }
 
+void printABS() {
+    if (root) {
+        root->print(0);
+    }
+}
+
 std::string toknames[] = {
         "ID",
         "STRING",
@@ -91,12 +97,16 @@ int main(int argc, char **argv) {
     std::string fname;
     int tok;
 
-    if (argc != 3) {
-        cerr << "Usage: <executable> -p filename" << endl;
+    std::vector<std::string> args(argv, argv + argc);
+
+    if (args.size() < 3 ||
+        std::find(args.begin(), args.end(), "-p") == args.end()) {
+        cerr << "Usage: <executable> -p filename {{opts}}" << endl
+             << "opts: -a : print generated ABS for \"-p\" file" << endl;
         exit(1);
     }
 
-    fname = argv[2];
+    fname = *(std::find(args.begin(), args.end(), "-p") + 1);
     yyin = fopen(fname.c_str(), "r");
     if (!yyin) {
         cerr << "Cannot open file: " << fname << endl;
@@ -119,8 +129,13 @@ int main(int argc, char **argv) {
     //     }
     // }
 
+
     syntacticAnalisys(fname);
     semanticAnalisys();
+
+    if (std::find(args.begin(), args.end(), "-a") != args.end()) {
+        printABS();
+    }
 
     exit(0);
 }

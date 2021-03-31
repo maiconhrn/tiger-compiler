@@ -1,51 +1,55 @@
-let
-    type integer = int
-    var b : integer := 8
+let 
 
-    function dummy(a : string, b : int) : int = (
-        "sdas";
-        1;
-        "dsa";
-        b;
-    )
+ type any = {any : int}
+ var buffer := getchar()
 
-    function dummy1(a : string, b : int) : int = (
-        "sdas";
-        1;
-        "dsa";
-        1;
-    )
+function readint(any: any) : int =
+ let var i := 0
+     function isdigit(s : string) : int = 
+		  ord(buffer)>=ord("0") & ord(buffer)<=ord("9")
+     function skipto() =
+       while buffer=" " | buffer="\n"
+         do buffer := getchar()
+  in skipto();
+     any.any := isdigit(buffer);
+     while isdigit(buffer)
+       do (i := i*10+ord(buffer)-ord("0"); buffer := getchar());
+     i
+ end
 
-    type arrtype = array of string
-	var arr1 : arrtype := arrtype [2] of "opa"
+ type list = {first: int, rest: list}
 
-    type rectype = {name:string, age:int}
-	var rec1:rectype := rectype {name="Nobody", age=1000}
-
-    var c : string := "cccc"
-in
-    if b then "asdsa";
-    
-    arr1[0] := c;
-
-    nil;
-
-    rec1.age = 1;
-    rec1.name := c;
-    rec1.age := rec1.age;
-    
-
-    b := 1;
-
-    dummy(c, b);
-
-    let
-        var a := c
-    in
-        if -b*b then
-            do (
-                rec1.age := rec1.age + 1;
-                b := b * 2;
-            ) while b
+ function readlist() : list =
+    let var any := any{any=0}
+        var i := readint(any)
+     in if any.any
+         then list{first=i,rest=readlist()}
+         else nil
     end
+
+ function merge(a: list, b: list) : list =
+   if a=nil then b
+   else if b=nil then a
+   else if a.first < b.first 
+      then list{first=a.first,rest=merge(a.rest,b)}
+      else list{first=b.first,rest=merge(a,b.rest)}
+
+ function printint(i: int) =
+  let function f(i:int) = if i>0 
+	     then (f(i/10); print(chr(i-i/10*10+ord("0"))))
+   in if i<0 then (print("-"); f(-i))
+      else if i>0 then f(i)
+      else print("0")
+  end
+
+ function printlist(l: list) =
+   if l=nil then print("\n")
+   else (printint(l.first); print(" "); printlist(l.rest))
+
+   var list1 := readlist()
+   var list2 := (buffer:=getchar(); readlist())
+
+
+  /* BODY OF MAIN PROGRAM */
+ in printlist(merge(list1,list2))
 end

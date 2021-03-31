@@ -95,8 +95,7 @@ exp:
     }
     | STRING {
         $$ = new StringExp(Location(@1.first_line, @1.first_column),
-                Identifier(Location(@1.first_line, @1.first_column),
-                    *$1));
+                *$1);
         
         delete $1;
     }

@@ -2,6 +2,7 @@
 #include <llvm/IR/DerivedTypes.h>
 #include "utils/symboltable.hpp"
 #include <iostream>
+#include <sstream>
 
 using namespace AST;
 using namespace std;
@@ -10,6 +11,16 @@ static void blank(int n) {
     for (int i = 0; i < n; i++) {
         cout << "___";
     }
+}
+
+static string getTabs(size_t depth) {
+    stringstream tabs;
+
+    for (int i = 0; i < depth; ++i) {
+        tabs << AST::TAB;
+    }
+
+    return tabs.str();
 }
 
 llvm::Type *Root::traverse(vector<VarDec *> &, CodeGenContext &context) {
@@ -96,7 +107,6 @@ llvm::Type *AST::StringExp::traverse(vector<VarDec *> &,
                                      CodeGenContext &context) {
     return context.stringType;
 }
-
 
 llvm::Type *CallExp::traverse(vector<VarDec *> &variableTable,
                               CodeGenContext &context) {
@@ -218,7 +228,6 @@ llvm::Type *RecordExp::traverse(vector<VarDec *> &variableTable,
     return type_;
 }
 
-
 llvm::Type *SequenceExp::traverse(vector<VarDec *> &variableTable,
                                   CodeGenContext &context) {
     llvm::Type *last;
@@ -227,7 +236,6 @@ llvm::Type *SequenceExp::traverse(vector<VarDec *> &variableTable,
     }
     return last;
 }
-
 
 llvm::Type *AssignExp::traverse(vector<VarDec *> &variableTable,
                                 CodeGenContext &context) {
@@ -306,12 +314,10 @@ llvm::Type *ForExp::traverse(vector<VarDec *> &variableTable,
     return context.voidType;
 }
 
-
 llvm::Type *AST::BreakExp::traverse(vector<VarDec *> &,
                                     CodeGenContext &context) {
     return context.voidType;
 }
-
 
 llvm::Type *LetExp::traverse(vector<VarDec *> &variableTable,
                              CodeGenContext &context) {
@@ -367,7 +373,6 @@ llvm::Type *ArrayExp::traverse(vector<VarDec *> &variableTable,
 
     return type_;
 }
-
 
 llvm::FunctionType *Prototype::traverse(vector<VarDec *> &variableTable,
                                         CodeGenContext &context) {
@@ -553,4 +558,441 @@ bool Root::semanticAnalisys() {
     traverse(mainVariableTable_, codeGenContext);
 
     return !codeGenContext.hasError;
+}
+
+void Root::print(int depth) {
+    root_->print(depth);
+}
+
+void AST::BinaryExp::print(int depth) {
+    string tabs = getTabs(depth);
+
+    cout << tabs << "(" << endl;
+    cout << tabs << "BinaryExp: " << (char) op_ << endl;
+    cout << tabs << AST::TAB << "Left: " << endl;
+    left_->print(depth + 1);
+    cout << tabs << AST::TAB << "Right: " << endl;
+    right_->print(depth + 1);
+    cout << tabs << ")" << endl;
+}
+
+void IntExp::print(int depth) {
+    string tabs = getTabs(depth);
+
+    cout << tabs << "(" << endl;
+    cout << tabs << "IntExp: " << val_ << endl;
+    cout << tabs << ")" << endl;
+}
+
+void StringExp::print(int depth) {
+    string tabs = getTabs(depth);
+
+    cout << tabs << "(" << endl;
+    cout << tabs << "StringExp: " << val_ << endl;
+    cout << tabs << ")" << endl;
+}
+
+void IfExp::print(int depth) {
+    string tabs = getTabs(depth);
+
+    cout << tabs << "(" << endl;
+    cout << tabs << "IfExp:" << endl;
+
+    cout << tabs << AST::TAB << "Test: " << endl;
+    test_->print(depth + 1);
+
+    cout << tabs << AST::TAB << "Then: " << endl;
+    then_->print(depth + 1);
+
+    if (else_) {
+        cout << tabs << AST::TAB << "Else: " << endl;
+        else_->print(depth + 1);
+    }
+
+    cout << tabs << ")" << endl;
+}
+
+void LetExp::print(int depth) {
+    string tabs = getTabs(depth);
+
+    cout << tabs << "(" << endl;
+
+    cout << tabs << "LetExp: " << endl;
+
+    cout << tabs << AST::TAB << "Decs: " << endl;
+    for (auto &dec : decs_) {
+        dec->print(depth + 1);
+    }
+
+    cout << tabs << AST::TAB << "Body: " << endl;
+    body_->print(depth + 1);
+
+    cout << tabs << ")" << endl;
+}
+
+void SequenceExp::print(int depth) {
+    string tabs = getTabs(depth);
+
+    cout << tabs << "(" << endl;
+
+    cout << tabs << "SequenceExp:" << endl;
+
+    cout << tabs << AST::TAB << "Exps: " << endl;
+    for (auto &exp : exps_) {
+        exp->print(depth + 1);
+    }
+
+    cout << tabs << ")" << endl;
+}
+
+void VarDec::print(int depth) {
+    string tabs = getTabs(depth);
+
+    cout << tabs << "(" << endl;
+
+    cout << tabs << "VarDec:" << endl;
+
+    cout << tabs << AST::TAB << "Name:" << endl;
+    name_.print(depth + 1);
+
+    if (typeName_) {
+        cout << tabs << AST::TAB << "TypeName::" << endl;
+        typeName_->print(depth + 1);
+    }
+
+    if (init_) {
+        cout << tabs << AST::TAB << "Init:" << endl;
+        init_->print(depth + 1);
+    }
+
+    cout << tabs << ")" << endl;
+}
+
+void Identifier::print(int depth) {
+    string tabs = getTabs(depth);
+
+    cout << tabs << "(" << endl;
+    cout << tabs << "Identifier: " << name_ << endl;
+    cout << tabs << ")" << endl;
+}
+
+void WhileExp::print(int depth) {
+    string tabs = getTabs(depth);
+
+    cout << tabs << "(" << endl;
+    cout << tabs << "WhileExp:" << endl;
+
+    cout << tabs << AST::TAB << "Test:" << endl;
+    test_->print(depth + 1);
+
+    cout << tabs << AST::TAB << "Body:" << endl;
+    body_->print(depth + 1);
+
+    cout << tabs << ")" << endl;
+}
+
+void DoWhileExp::print(int depth) {
+    string tabs = getTabs(depth);
+
+    cout << tabs << "(" << endl;
+    cout << tabs << "DoWhileExp:" << endl;
+
+    cout << tabs << AST::TAB << "Body:" << endl;
+    body_->print(depth + 1);
+
+    cout << tabs << AST::TAB << "Test:" << endl;
+    test_->print(depth + 1);
+
+    cout << tabs << ")" << endl;
+}
+
+void VarExp::print(int depth) {
+    string tabs = getTabs(depth);
+
+    cout << tabs << "(" << endl;
+    cout << tabs << "VarExp: " << endl;
+
+    cout << tabs << AST::TAB << "Var:" << endl;
+    var_->print(depth + 1);
+
+    cout << tabs << ")" << endl;
+}
+
+void SimpleVar::print(int depth) {
+    string tabs = getTabs(depth);
+
+    cout << tabs << "(" << endl;
+    cout << tabs << "SimpleVar:" << endl;
+
+    cout << tabs << AST::TAB << "Name:" << endl;
+    name_.print(depth + 1);
+
+    cout << tabs << ")" << endl;
+}
+
+void FieldVar::print(int depth) {
+    string tabs = getTabs(depth);
+
+    cout << tabs << "(" << endl;
+    cout << tabs << "FieldVar:" << endl;
+
+    cout << tabs << AST::TAB << "Var:" << endl;
+    var_->print(depth + 1);
+
+    cout << tabs << AST::TAB << "Field:" << endl;
+    field_.print(depth + 1);
+
+    cout << tabs << ")" << endl;
+}
+
+void SubscriptVar::print(int depth) {
+    string tabs = getTabs(depth);
+
+    cout << tabs << "(" << endl;
+    cout << tabs << "SubscriptVar:" << endl;
+
+    cout << tabs << AST::TAB << "Var:" << endl;
+    var_->print(depth + 1);
+
+    cout << tabs << AST::TAB << "Exp:" << endl;
+    exp_->print(depth + 1);
+
+    cout << tabs << ")" << endl;
+}
+
+void ForExp::print(int depth) {
+    string tabs = getTabs(depth);
+
+    cout << tabs << "(" << endl;
+    cout << tabs << "ForExp:" << endl;
+
+    cout << tabs << AST::TAB << "Var:" << endl;
+    var_.print(depth + 1);
+
+    cout << tabs << AST::TAB << "Low:" << endl;
+    low_->print(depth + 1);
+
+    cout << tabs << AST::TAB << "High:" << endl;
+    high_->print(depth + 1);
+
+    cout << tabs << AST::TAB << "Body:" << endl;
+    body_->print(depth + 1);
+
+    cout << tabs << ")" << endl;
+}
+
+void AST::BreakExp::print(int depth) {
+    string tabs = getTabs(depth);
+
+    cout << tabs << "(" << endl;
+    cout << tabs << "BreakExp:" << endl;
+
+    cout << tabs << ")" << endl;
+}
+
+void ArrayExp::print(int depth) {
+    string tabs = getTabs(depth);
+
+    cout << tabs << "(" << endl;
+    cout << tabs << "ArrayExp:" << endl;
+
+    cout << tabs << AST::TAB << "TypeName:" << endl;
+    typeName_->print(depth + 1);
+
+    cout << tabs << AST::TAB << "Size:"s << endl;
+    size_->print(depth + 1);
+
+    if (init_) {
+        cout << tabs << AST::TAB << "Init:" << endl;
+        init_->print(depth + 1);
+    }
+
+    cout << tabs << ")" << endl;
+}
+
+void NameType::print(int depth) {
+    string tabs = getTabs(depth);
+
+    cout << tabs << "(" << endl;
+    cout << tabs << "NameType:" << endl;
+
+    cout << tabs << AST::TAB << "Type:" << endl;
+    type_.print(depth + 1);
+
+    cout << tabs << ")" << endl;
+}
+
+void RecordType::print(int depth) {
+    string tabs = getTabs(depth);
+
+    cout << tabs << "(" << endl;
+    cout << tabs << "RecordType:" << endl;
+
+    cout << tabs << AST::TAB << "Name:" << endl;
+    name_.print(depth + 1);
+
+    cout << tabs << AST::TAB << "Fields: " << endl;
+    for (auto &field : fields_) {
+        field->print(depth + 1);
+    }
+
+    cout << tabs << ")" << endl;
+}
+
+void ArrayType::print(int depth) {
+    string tabs = getTabs(depth);
+
+    cout << tabs << "(" << endl;
+    cout << tabs << "ArrayType:" << endl;
+
+    cout << tabs << AST::TAB << "Name:" << endl;
+    name_.print(depth + 1);
+
+    cout << tabs << AST::TAB << "Type:" << endl;
+    type_.print(depth + 1);
+
+    cout << tabs << ")" << endl;
+}
+
+void TypeDec::print(int depth) {
+    string tabs = getTabs(depth);
+
+    cout << tabs << "(" << endl;
+    cout << tabs << "TypeDec:" << endl;
+
+    cout << tabs << AST::TAB << "Name:" << endl;
+    name_.print(depth + 1);
+
+    cout << tabs << AST::TAB << "Type:" << endl;
+    type_->print(depth + 1);
+
+    cout << tabs << ")" << endl;
+}
+
+void NilExp::print(int depth) {
+    string tabs = getTabs(depth);
+
+    cout << tabs << "(" << endl;
+    cout << tabs << "NilExp:" << endl;
+
+    cout << tabs << ")" << endl;
+}
+
+void CallExp::print(int depth) {
+    string tabs = getTabs(depth);
+
+    cout << tabs << "(" << endl;
+    cout << tabs << "CallExp:" << endl;
+
+    cout << tabs << AST::TAB << "Func:" << endl;
+    func_.print(depth + 1);
+
+    cout << tabs << AST::TAB << "Args: " << endl;
+    for (auto &arg : args_) {
+        arg->print(depth + 1);
+    }
+
+    cout << tabs << ")" << endl;
+}
+
+void Field::print(int depth) {
+    string tabs = getTabs(depth);
+
+    cout << tabs << "(" << endl;
+    cout << tabs << "Field:" << endl;
+
+    cout << tabs << AST::TAB << "Name:" << endl;
+    name_.print(depth + 1);
+
+    cout << tabs << AST::TAB << "TypeName:" << endl;
+    typeName_.print(depth + 1);
+
+    if (varDec_) {
+        cout << tabs << AST::TAB << "VarDec:" << endl;
+        varDec_->print(depth + 1);
+    }
+
+    cout << tabs << ")" << endl;
+}
+
+void FieldExp::print(int depth) {
+    string tabs = getTabs(depth);
+
+    cout << tabs << "(" << endl;
+    cout << tabs << "FieldExp:" << endl;
+
+    cout << tabs << AST::TAB << "Name:" << endl;
+    name_.print(depth + 1);
+
+    cout << tabs << AST::TAB << "Exp:" << endl;
+    exp_->print(depth + 1);
+
+    cout << tabs << ")" << endl;
+}
+
+void RecordExp::print(int depth) {
+    string tabs = getTabs(depth);
+
+    cout << tabs << "(" << endl;
+    cout << tabs << "RecordExp:" << endl;
+
+    cout << tabs << AST::TAB << "TypeName:" << endl;
+    typeName_->print(depth + 1);
+
+    cout << tabs << AST::TAB << "FieldExps: " << endl;
+    for (auto &exp : fieldExps_) {
+        exp->print(depth + 1);
+    }
+
+    cout << tabs << ")" << endl;
+}
+
+void AssignExp::print(int depth) {
+    string tabs = getTabs(depth);
+
+    cout << tabs << "(" << endl;
+    cout << tabs << "AssignExp:" << endl;
+
+    cout << tabs << AST::TAB << "Var:" << endl;
+    var_->print(depth + 1);
+
+    cout << tabs << AST::TAB << "Exp:" << endl;
+    exp_->print(depth + 1);
+
+    cout << tabs << ")" << endl;
+}
+
+void AST::Prototype::print(int depth) {
+    string tabs = getTabs(depth);
+
+    cout << tabs << "(" << endl;
+    cout << tabs << "Prototype:" << endl;
+
+    cout << tabs << AST::TAB << "Name:" << endl;
+    name_.print(depth + 1);
+
+    cout << tabs << AST::TAB << "Params: " << endl;
+    for (auto &param : params_) {
+        param->print(depth + 1);
+    }
+
+    cout << tabs << AST::TAB << "Result:" << endl;
+    result_.print(depth + 1);
+
+    cout << tabs << ")" << endl;
+}
+
+void FunctionDec::print(int depth) {
+    string tabs = getTabs(depth);
+
+    cout << tabs << "(" << endl;
+    cout << tabs << "FunctionDec:" << endl;
+
+    cout << tabs << AST::TAB << "Proto:" << endl;
+    proto_->print(depth + 1);
+
+    cout << tabs << AST::TAB << "Body:" << endl;
+    body_->print(depth + 1);
+
+    cout << tabs << ")" << endl;
 }
