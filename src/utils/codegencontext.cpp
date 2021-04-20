@@ -126,9 +126,20 @@ llvm::Type *CodeGenContext::logErrorT(std::string const &msg,
 llvm::Type *CodeGenContext::typeOf(const AST::Location &loc,
                                    std::string const &name,
                                    std::set<std::string> &parentName) {
-    if (auto type = types[name]) return type;
+    if (auto type = types[name]) {
+        return type;
+    }
+
     auto typeDec = typeDecs[name];
-    if (!typeDec) return logErrorT(name + " is not a type", loc);
+    if (!typeDec) {
+        return logErrorT(name + " is not a type", loc);
+    }
+
+    //TODO verify array difenty type like
+    //	type arrtype1 = array of int
+    //	type arrtype2 = array of int
+    //
+    //	var arr1: arrtype1 := arrtype2 [10] of 0
     return typeDec->traverse(parentName, *this);
 }
 

@@ -190,12 +190,12 @@ exp:
     }
     | exp GE exp {
         $$ = new BinaryExp(Location(@1.first_line, @1.first_column),
-                BinaryExp::GEQ, 
+                BinaryExp::GEQU,
                 std::unique_ptr<Exp>($1), std::unique_ptr<Exp>($3));
     }
     | exp LE exp {
         $$ = new BinaryExp(Location(@1.first_line, @1.first_column),
-                BinaryExp::LEQ, 
+                BinaryExp::LEQU,
                 std::unique_ptr<Exp>($1), std::unique_ptr<Exp>($3));
     }
     | LPAREN exps RPAREN {

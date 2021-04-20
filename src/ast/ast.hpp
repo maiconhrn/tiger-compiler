@@ -26,6 +26,10 @@ namespace AST {
 
     const static std::string TAB = "  ";
 
+    //TODO fix the name of outputfile value pass
+    static std::string outputFileO = "output.o";
+    static std::string outputFileI = "output.ll";
+
     class VarDec;
 
     class Node {
@@ -151,6 +155,11 @@ namespace AST {
         void print(int depth) override;
     };
 
+    /*TODO:
+    codigo de declaracao tiger; passar duas vezes na verificacao
+
+    1. adiciona o cabeçalho
+    2. processa o corpo*/
     class Dec : public Node {
     protected:
         Location loc_;
@@ -167,6 +176,9 @@ namespace AST {
         void print(int depth) override {
             std::cerr << "Print not implented" << endl;
         }
+
+        virtual llvm::Type *computeHeaders(vector<VarDec *> &variableTable,
+                                           CodeGenContext &context) = 0;
     };
 
     class Type {
@@ -267,7 +279,6 @@ namespace AST {
     };
 
     class NilExp : public Exp {
-        // dummy body
         llvm::Type *type_{nullptr};
     public:
         NilExp(Location loc) :
@@ -345,8 +356,8 @@ namespace AST {
             GTH = '>',
             EQU = '=',
             NEQU = '!',
-            LEQ = '[',
-            GEQ = ']',
+            LEQU = '[',
+            GEQU = ']',
 
             AND_ = '&',
             OR_ = '|',
@@ -698,6 +709,10 @@ namespace AST {
         }
 
         void print(int depth) override;
+
+
+        llvm::Type *computeHeaders(vector<VarDec *> &variableTable,
+                                   CodeGenContext &context) override;
     };
 
     class NameType;
@@ -726,12 +741,15 @@ namespace AST {
             return name_.getName();
         }
 
-        llvm::Value *read(CodeGenContext &context) const;
+        llvm::Value *read(CodeGenContext &context);
 
         llvm::Type *traverse(vector<VarDec *> &variableTable,
                              CodeGenContext &context) override;
 
         void print(int depth) override;
+
+        llvm::Type *computeHeaders(vector<VarDec *> &variableTable,
+                                   CodeGenContext &context) override;
     };
 
     class TypeDec : public Dec {
@@ -749,6 +767,9 @@ namespace AST {
                              CodeGenContext &context) override;
 
         void print(int depth) override;
+
+        llvm::Type *computeHeaders(vector<VarDec *> &variableTable,
+                                   CodeGenContext &context) override;
     };
 
     class NameType : public Type {

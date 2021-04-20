@@ -146,7 +146,10 @@ llvm::Type *BinaryExp::traverse(vector<VarDec *> &variableTable,
                                 CodeGenContext &context) {
     auto left = left_->traverse(variableTable, context);
     auto right = right_->traverse(variableTable, context);
-    if (!left || !right) return nullptr;
+    if (!left || !right) {
+        return nullptr;
+    }
+
     switch (this->op_) {
         case ADD:
         case SUB:
@@ -154,12 +157,13 @@ llvm::Type *BinaryExp::traverse(vector<VarDec *> &variableTable,
         case DIV:
         case LTH:
         case GTH:
-        case LEQ:
-        case GEQ: {
-            if (left->isIntegerTy() && right->isIntegerTy())
+        case LEQU:
+        case GEQU: {
+            if (left->isIntegerTy() && right->isIntegerTy()) {
                 return context.intType;
-            else
+            } else {
                 return context.logErrorT("Binary expression require integers", getLoc());
+            }
         }
         case EQU:
         case NEQU: {
@@ -174,7 +178,6 @@ llvm::Type *BinaryExp::traverse(vector<VarDec *> &variableTable,
         default:
             return nullptr;
     }
-    return nullptr;
 }
 
 llvm::Type *Field::traverse(vector<VarDec *> &variableTable,
@@ -197,6 +200,10 @@ llvm::Type *FieldExp::traverse(vector<VarDec *> &variableTable,
 llvm::Type *RecordExp::traverse(vector<VarDec *> &variableTable,
                                 CodeGenContext &context) {
     type_ = context.typeOf(typeName_->getLoc(), typeName_->getName().getName());
+
+    if (!type_) {
+        return nullptr;
+    }
 
     if (!type_->isPointerTy()) {
         return context.logErrorT("Require a record type", typeName_->getLoc());
@@ -230,58 +237,105 @@ llvm::Type *RecordExp::traverse(vector<VarDec *> &variableTable,
 
 llvm::Type *SequenceExp::traverse(vector<VarDec *> &variableTable,
                                   CodeGenContext &context) {
-    llvm::Type *last;
+    llvm::Type *last = context.voidType;
+
     for (auto &exp : exps_) {
         last = exp->traverse(variableTable, context);
     }
+
     return last;
 }
 
 llvm::Type *AssignExp::traverse(vector<VarDec *> &variableTable,
                                 CodeGenContext &context) {
     auto var = var_->traverse(variableTable, context);
-    if (!var) return nullptr;
+    if (!var) {
+        return nullptr;
+    }
+
     auto exp = exp_->traverse(variableTable, context);
-    if (!exp) return nullptr;
-    if (context.isMatch(var, exp))
-        return exp;
-    else
+    if (!exp) {
+        return nullptr;
+    }
+
+    if (context.isMatch(var, exp)) {
+        return context.voidType;
+    } else {
         return context.logErrorT("Assign types do not match", exp_->getLoc());
+    }
 }
 
 llvm::Type *IfExp::traverse(vector<VarDec *> &variableTable,
                             CodeGenContext &context) {
     auto test = test_->traverse(variableTable, context);
-    if (!test) return nullptr;
+    if (!test) {
+        return nullptr;
+    }
+
     auto then = then_->traverse(variableTable, context);
-    if (!then) return nullptr;
-    if (!test->isIntegerTy()) return context.logErrorT("Require integer in test", test_->getLoc());
+    if (!then) {
+        return nullptr;
+    }
+
+    if (!test->isIntegerTy()) {
+        return context.logErrorT("Require integer in test", test_->getLoc());
+    }
+
     if (else_) {
         auto elsee = else_->traverse(variableTable, context);
-        if (!elsee) return nullptr;
-        if (!context.isMatch(then, elsee))
+        if (!elsee) {
+            return nullptr;
+        }
+
+        if (!context.isMatch(then, elsee)) {
             return context.logErrorT("Require same type in both branch", else_->getLoc());
+        }
+    } else if (!then->isVoidTy()) {
+        return context.logErrorT("\"Then\" returns a value but \"Else\" doesnt", then_->getLoc());
     } else {
         return context.voidType;
     }
+
     return then;
 }
 
 llvm::Type *WhileExp::traverse(vector<VarDec *> &variableTable,
                                CodeGenContext &context) {
     auto test = test_->traverse(variableTable, context);
-    if (!test) return nullptr;
-    if (!test->isIntegerTy()) return context.logErrorT("Require integer", test_->getLoc());
-    body_->traverse(variableTable, context);
+    if (!test) {
+        return nullptr;
+    }
+
+    if (!test->isIntegerTy()) {
+        return context.logErrorT("Require integer", test_->getLoc());
+    }
+
+    auto bodyType = body_->traverse(variableTable, context);
+
+    if (bodyType != context.voidType) {
+        return context.logErrorT("While Body do not returns value", body_->getLoc());
+    }
+
     return context.voidType;
 }
 
 llvm::Type *DoWhileExp::traverse(vector<VarDec *> &variableTable,
                                  CodeGenContext &context) {
     auto test = test_->traverse(variableTable, context);
-    if (!test) return nullptr;
-    if (!test->isIntegerTy()) return context.logErrorT("Require integer", test_->getLoc());
-    body_->traverse(variableTable, context);
+    if (!test) {
+        return nullptr;
+    }
+
+    if (!test->isIntegerTy()) {
+        return context.logErrorT("Require integer", test_->getLoc());
+    }
+
+    auto bodyType = body_->traverse(variableTable, context);
+
+    if (bodyType != context.voidType) {
+        return context.logErrorT("While Body do not returns value", body_->getLoc());
+    }
+
     return context.voidType;
 }
 
@@ -306,6 +360,7 @@ llvm::Type *ForExp::traverse(vector<VarDec *> &variableTable,
                          variableTable.size(), context.currentLevel);
     variableTable.push_back(varDec_);
     context.valueDecs.push(var_.getName(), varDec_);
+
     auto body = body_->traverse(variableTable, context);
     if (!body) {
         return nullptr;
@@ -325,30 +380,45 @@ llvm::Type *LetExp::traverse(vector<VarDec *> &variableTable,
     context.typeDecs.enter();
     context.valueDecs.enter();
     context.functions.enter();
+
+//    for (auto &dec : decs_) {
+//        dec->computeHeaders(variableTable, context);
+//    }
+
     for (auto &dec : decs_) {
         dec->traverse(variableTable, context);
     }
+
     auto body = body_->traverse(variableTable, context);
     context.functions.exit();
     context.valueDecs.exit();
     context.types.exit();
     context.typeDecs.exit();
+
     return body;
 }
 
 llvm::Type *TypeDec::traverse(vector<VarDec *> &, CodeGenContext &context) {
+    if (context.typeDecs.lookupOne(name_.getName())) {
+        return context.logErrorT("Type "
+                                 + name_.getName()
+                                 + " is already defined in same scope.",
+                                 name_.getLoc());
+    }
+
     type_->setName(name_);
     context.typeDecs[name_.getName()] = type_.get();
+
     return context.voidType;
 }
 
 llvm::Type *ArrayExp::traverse(vector<VarDec *> &variableTable,
                                CodeGenContext &context) {
     type_ = context.typeOf(getLoc(), typeName_->getName().getName());
-
     if (!type_) {
         return nullptr;
     }
+
     if (!type_->isPointerTy()) {
         return context.logErrorT("Array type required", typeName_->getLoc());
     }
@@ -371,6 +441,11 @@ llvm::Type *ArrayExp::traverse(vector<VarDec *> &variableTable,
         return context.logErrorT("Initial type not matches", init_->getLoc());
     }
 
+    //TODO verify array difenty type like
+    //	type arrtype1 = array of int
+    //	type arrtype2 = array of int
+    //
+    //	var arr1: arrtype1 := arrtype2 [10] of 0
     return type_;
 }
 
@@ -403,58 +478,84 @@ llvm::FunctionType *Prototype::traverse(vector<VarDec *> &variableTable,
         return nullptr;
     }
     auto functionType = llvm::FunctionType::get(resultType_, args, false);
-    function_ =
-            llvm::Function::Create(functionType, llvm::Function::InternalLinkage,
-                                   name_.getName(), context.module.get());
+    function_ = llvm::Function::Create(functionType, llvm::Function::InternalLinkage,
+                                       name_.getName(), context.module.get());
     return functionType;
 }
 
 llvm::Type *FunctionDec::traverse(vector<VarDec *> &, CodeGenContext &context) {
-    if (context.functions.lookupOne(name_.getName()))
-        return context.logErrorT("Function " + name_.getName() +
+    if (context.functions.lookupOne(name_.getName())) {
+        return context.logErrorT("Function "
+                                 + name_.getName() +
                                  " is already defined in same scope.", name_.getLoc());
+    }
+
     context.valueDecs.enter();
     level_ = ++context.currentLevel;
+
     auto proto = proto_->traverse(variableTable_, context);
-    if (!proto) return nullptr;
+    if (!proto) {
+        return nullptr;
+    }
+
     context.staticLink.push_front(proto_->getFrame());
     context.functions.push(name_.getName(), proto_->getFunction());
+
     auto body = body_->traverse(variableTable_, context);
     context.staticLink.pop_front();
-    if (!body) return nullptr;
+    if (!body) {
+        return nullptr;
+    }
+
     context.valueDecs.exit();
     --context.currentLevel;
+
     auto retType = proto_->getResultType();
-    if (!retType->isVoidTy() && retType != body)
+
+    if (!body->isVoidTy() && retType->isVoidTy()) {
+        return context.logErrorT("Procedure can not returns a value", getLoc());
+    }
+
+    if (!retType->isVoidTy() && retType != body) {
         return context.logErrorT("Function return type not match",
                                  proto_->getResult().getName().empty()
                                  ? getLoc()
                                  : proto_->getResult().getLoc());
+    }
+
     return context.voidType;
 }
 
 llvm::Type *SimpleVar::traverse(vector<VarDec *> &, CodeGenContext &context) {
-    // TODO: check
     auto type = context.valueDecs[name_.getName()];
+
     if (!type) {
         return context.logErrorT(name_.getName()
                                  + " is not defined", name_.getLoc());
     }
+
     return type->getType();
 }
 
 llvm::Type *VarDec::traverse(vector<VarDec *> &variableTable,
                              CodeGenContext &context) {
-    if (context.valueDecs.lookupOne(name_.getName()))
-        return context.logErrorT(name_.getName()
-                                 + " is already defined in this scope.",
+    if (context.valueDecs.lookupOne(name_.getName())) {
+        return context.logErrorT("Var: "
+                                 + name_.getName()
+                                 + " is already defined in same scope.",
                                  name_.getLoc());
+    }
+
     offset_ = variableTable.size();
     level_ = context.currentLevel;
     variableTable.push_back(this);
     auto init = init_->traverse(variableTable, context);
 
     if (!typeName_) {
+        if (init == context.nilType) {
+            return context.logErrorT("Nil can only assign to record type", init_->getLoc());
+        }
+
         type_ = init;
     } else {
         type_ = context.typeOf(typeName_->getName().getLoc(),
@@ -470,6 +571,7 @@ llvm::Type *VarDec::traverse(vector<VarDec *> &variableTable,
     }
 
     context.valueDecs.push(name_.getName(), this);
+
     return context.voidType;
 }
 
@@ -494,6 +596,7 @@ llvm::Type *AST::ArrayType::traverse(std::set<std::string> &parentName,
 
     type = llvm::PointerType::getUnqual(type);
     context.types.push(name_.getName(), type);
+
     return type;
 }
 
@@ -995,4 +1098,56 @@ void FunctionDec::print(int depth) {
     body_->print(depth + 1);
 
     cout << tabs << ")" << endl;
+}
+
+llvm::Type *FunctionDec::computeHeaders(vector<VarDec *> &variableTable,
+                                        CodeGenContext &context) {
+    if (context.functions.lookupOne(name_.getName())) {
+        return context.logErrorT("Function "
+                                 + name_.getName() +
+                                 " is already defined in same scope.", name_.getLoc());
+    }
+
+    context.valueDecs.enter();
+    level_ = ++context.currentLevel;
+
+    auto proto = proto_->traverse(variableTable_, context);
+    if (!proto) {
+        return nullptr;
+    }
+
+    context.staticLink.push_front(proto_->getFrame());
+    context.functions.push(name_.getName(), proto_->getFunction());
+
+    auto body = body_->traverse(variableTable_, context);
+    context.staticLink.pop_front();
+    if (!body) {
+        return nullptr;
+    }
+
+    context.valueDecs.exit();
+    --context.currentLevel;
+
+    auto retType = proto_->getResultType();
+
+    if (!body->isVoidTy() && retType->isVoidTy()) {
+        return context.logErrorT("Procedure can not returns a value", getLoc());
+    }
+
+    if (!retType->isVoidTy() && retType != body) {
+        return context.logErrorT("Function return type not match",
+                                 proto_->getResult().getName().empty()
+                                 ? getLoc()
+                                 : proto_->getResult().getLoc());
+    }
+
+    return context.voidType;
+}
+
+llvm::Type *VarDec::computeHeaders(vector<VarDec *> &variableTable, CodeGenContext &context) {
+    return nullptr;
+}
+
+llvm::Type *TypeDec::computeHeaders(vector<VarDec *> &variableTable, CodeGenContext &context) {
+    return nullptr;
 }

@@ -15,9 +15,11 @@ extern std::unique_ptr<AST::Root> root;
 
 extern int yyparse(void); /* prototype for the syntaxing function */
 
+void codegen();
+
 extern FILE *yyin;
 
-void syntacticAnalisys(std::string fname) {
+void syntacticAnalisys() {
     if (yyparse() == 0) {
         cout << "Syntactic analysis successful!" << endl;
     } else {
@@ -34,6 +36,17 @@ void semanticAnalisys() {
             cerr << "Semantic analysis failed" << endl;
             exit(1);
         }
+    }
+}
+
+void codegen() {
+    llvm::InitializeNativeTarget();
+    llvm::InitializeNativeTargetAsmPrinter();
+    llvm::InitializeNativeTargetAsmParser();
+
+    if (root) {
+        CodeGenContext codeGenContext;
+        root->codegen(codeGenContext);
     }
 }
 
@@ -101,8 +114,10 @@ int main(int argc, char **argv) {
 
     if (args.size() < 3 ||
         std::find(args.begin(), args.end(), "-p") == args.end()) {
-        cerr << "Usage: <executable> -p filename {{opts}}" << endl
-             << "opts: -a : print generated ABS for \"-p\" file" << endl;
+        cerr << "Usage: <executable> -p filename" << endl
+             << "opts: \"-a\" : print generated ABS for \"-p\" file" << endl
+             << "      \"-i {{output file}}\" : output LLVM IR text representation for \"-p\" file" << endl
+             << "      \"-o {{output file}}\" : output the compiled executable for \"-p\" file" << endl;
         exit(1);
     }
 
@@ -129,13 +144,19 @@ int main(int argc, char **argv) {
     //     }
     // }
 
+    auto _i = std::find(args.begin(), args.end(), "-i");
+    if (_i != args.end()) {
+        AST::outputFileI = *(++_i);
+    }
 
-    syntacticAnalisys(fname);
+    syntacticAnalisys();
     semanticAnalisys();
 
     if (std::find(args.begin(), args.end(), "-a") != args.end()) {
         printABS();
     }
+
+    codegen();
 
     exit(0);
 }
