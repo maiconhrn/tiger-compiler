@@ -35,6 +35,10 @@ namespace AST {
 
 class CodeGenContext {
 public:
+    std::string outputFileO = "output";
+    std::string outputFileI = "output.ll";
+    std::vector<std::string> libs;
+
     bool hasError{false};
     llvm::LLVMContext context;
     llvm::IRBuilder<> builder{context};

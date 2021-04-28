@@ -6,9 +6,11 @@ extern "C" {
 void print(char *c) {
     std::cout << c;
 }
+
 void printd(std::uint64_t digit) {
     std::cout << digit;
 }
+
 std::uint8_t *allocaRecord(std::uint64_t size) {
     return (std::uint8_t *) malloc(size);
 }
@@ -17,7 +19,9 @@ std::uint8_t *allocaArray(std::uint64_t size, std::uint64_t elementSize) {
     return (std::uint8_t *) malloc(size * elementSize);
 }
 
-void flush() { std::cout.flush(); }
+void flush() {
+    std::cout.flush();
+}
 
 char *getchar_() {
     char *result = new char[2];

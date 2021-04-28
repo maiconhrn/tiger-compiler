@@ -65,6 +65,7 @@ SOURCES += src/main.cpp \
            src/codegen/codegen.cpp \
            src/utils/codegencontext.cpp \
            src/utils/symboltable.cpp \
+           src/utils/runtime.cpp \
 
 OTHER_FILES += \
     src/tiger.l \

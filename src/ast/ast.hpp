@@ -25,11 +25,7 @@ namespace AST {
     using std::endl;
 
     const static std::string TAB = "  ";
-
-    //TODO fix the name of outputfile value pass
-    static std::string outputFileO = "output.o";
-    static std::string outputFileI = "output.ll";
-
+    
     class VarDec;
 
     class Node {
