@@ -25,9 +25,9 @@ void syntacticAnalisys() {
     }
 }
 
-void semanticAnalisys() {
+void semanticAnalisys(CodeGenContext &context) {
     if (root) {
-        if (root->semanticAnalisys()) {
+        if (root->traverse(context)) {
             cout << "Semantic analysis successful!" << endl;
         } else {
             cerr << "Semantic analysis failed" << endl;
@@ -37,10 +37,6 @@ void semanticAnalisys() {
 }
 
 void codegen(CodeGenContext &context) {
-    llvm::InitializeNativeTarget();
-    llvm::InitializeNativeTargetAsmPrinter();
-    llvm::InitializeNativeTargetAsmParser();
-
     if (root) {
         root->codegen(context);
 
@@ -62,22 +58,26 @@ void printABS() {
 void executablegen(CodeGenContext &context) {
     std::stringstream ss;
 
-    ss << "clang++ " << context.outputFileI << " ";
+    ss << "clang++ " << context.outputFileO << " ";
     for (const auto &lib : context.libs) {
         ss << lib << " ";
     }
-    ss << "-o " << context.outputFileO;
+    ss << "-o " << context.outputFileE;
 
     if (system(ss.str().c_str()) == 0) {
-        cout << "Executable: \"" << context.outputFileO << "\" generated!" << endl;
+        cout << "Executable: \"" << context.outputFileE << "\" generated!" << endl;
     } else {
-        cerr << "Executable: \"" << context.outputFileO << "\" not generated!" << endl;
+        cerr << "Executable: \"" << context.outputFileE << "\" not generated!" << endl;
         exit(EXIT_FAILURE);
     }
 
 }
 
 int main(int argc, char **argv) {
+    llvm::InitializeNativeTarget();
+    llvm::InitializeNativeTargetAsmPrinter();
+    llvm::InitializeNativeTargetAsmParser();
+
     std::string fname;
     CodeGenContext codeGenContext;
 
@@ -89,7 +89,7 @@ int main(int argc, char **argv) {
              << "opts: \"-a\" : print generated ABS for \"-p\" file" << endl
              << "      \"-i {{output file}}\" : output LLVM IR text representation for \"-p\" file" << endl
              << "      \"-o {{output file}}\" : output the compiled executable for \"-p\" file" << endl
-             << "      \"-l{{lib path}}\" : add lib path to be compiled with \"-p\" file" << endl;
+             << "      \"-l{{lib path}}\" : add lib to be compiled with \"-p\" file" << endl;
         exit(EXIT_FAILURE);
     }
 
@@ -107,7 +107,7 @@ int main(int argc, char **argv) {
 
     auto _o = std::find(args.begin(), args.end(), "-o");
     if (_o != args.end()) {
-        codeGenContext.outputFileO = *(++_o);
+        codeGenContext.outputFileE = *(++_o);
     }
 
     auto _l = args.begin();
@@ -121,7 +121,7 @@ int main(int argc, char **argv) {
     }
 
     syntacticAnalisys();
-    semanticAnalisys();
+    semanticAnalisys(codeGenContext);
 
     if (std::find(args.begin(), args.end(), "-a") != args.end()) {
         printABS();

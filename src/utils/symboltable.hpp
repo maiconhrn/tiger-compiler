@@ -51,14 +51,21 @@ T *&SymbolTable<T>::operator[](const std::string &name) {
 
 template<typename T>
 T *&SymbolTable<T>::lookup(const std::string &name) {
-    for (auto stack : stack_)
-        if (stack[name]) return stack[name];
+    for (auto stack = stack_.begin(); stack != stack_.end(); ++stack) {
+        if (stack->find(name) != stack->end()) {
+            return (*stack)[name];
+        }
+    }
+
     return stack_.front()[name];
 }
 
 template<typename T>
 T *&SymbolTable<T>::lookupOne(const std::string &name) {
-    if (stack_.front()[name]) return stack_.front()[name];
+    if (stack_.front().find(name) != stack_.front().end()) {
+        return stack_.front()[name];
+    }
+
     return stack_.front()[name];
 }
 

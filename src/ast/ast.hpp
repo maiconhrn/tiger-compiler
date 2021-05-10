@@ -25,7 +25,7 @@ namespace AST {
     using std::endl;
 
     const static std::string TAB = "  ";
-    
+
     class VarDec;
 
     class Node {
@@ -146,7 +146,7 @@ namespace AST {
             return loc_;
         }
 
-        bool semanticAnalisys();
+        bool traverse(CodeGenContext &context);
 
         void print(int depth) override;
     };
@@ -172,9 +172,6 @@ namespace AST {
         void print(int depth) override {
             std::cerr << "Print not implented" << endl;
         }
-
-        virtual llvm::Type *computeHeaders(vector<VarDec *> &variableTable,
-                                           CodeGenContext &context) = 0;
     };
 
     class Type {
@@ -555,7 +552,6 @@ namespace AST {
         unique_ptr<Exp> low_;
         unique_ptr<Exp> high_;
         unique_ptr<Exp> body_;
-        // bool escape;
         VarDec *varDec_{nullptr};
 
     public:
@@ -705,10 +701,6 @@ namespace AST {
         }
 
         void print(int depth) override;
-
-
-        llvm::Type *computeHeaders(vector<VarDec *> &variableTable,
-                                   CodeGenContext &context) override;
     };
 
     class NameType;
@@ -716,7 +708,6 @@ namespace AST {
     class VarDec : public Dec {
         unique_ptr<NameType> typeName_;
         unique_ptr<Exp> init_{nullptr};
-        // bool escape;VarDec
         size_t offset_;
         size_t level_;
         llvm::Type *type_{nullptr};
@@ -737,15 +728,10 @@ namespace AST {
             return name_.getName();
         }
 
-        llvm::Value *read(CodeGenContext &context);
-
         llvm::Type *traverse(vector<VarDec *> &variableTable,
                              CodeGenContext &context) override;
 
         void print(int depth) override;
-
-        llvm::Type *computeHeaders(vector<VarDec *> &variableTable,
-                                   CodeGenContext &context) override;
     };
 
     class TypeDec : public Dec {
@@ -763,9 +749,6 @@ namespace AST {
                              CodeGenContext &context) override;
 
         void print(int depth) override;
-
-        llvm::Type *computeHeaders(vector<VarDec *> &variableTable,
-                                   CodeGenContext &context) override;
     };
 
     class NameType : public Type {

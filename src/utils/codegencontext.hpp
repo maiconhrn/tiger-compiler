@@ -35,8 +35,9 @@ namespace AST {
 
 class CodeGenContext {
 public:
-    std::string outputFileO = "output";
-    std::string outputFileI = "output.ll";
+    std::string outputFileO = "object.o";
+    std::string outputFileE = "output";
+    std::string outputFileI = "";
     std::vector<std::string> libs;
 
     bool hasError{false};
@@ -44,13 +45,15 @@ public:
     llvm::IRBuilder<> builder{context};
     std::unique_ptr<llvm::Module> module{std::make_unique<llvm::Module>("main", context)};
     SymbolTable<AST::VarDec> valueDecs;
+    SymbolTable<llvm::AllocaInst> namedValues;
     SymbolTable<llvm::Type> types;
     SymbolTable<AST::Type> typeDecs;
+    llvm::Function *mainFunction;
+    llvm::TargetMachine *targetMachine;
     SymbolTable<llvm::Function> functions;
     SymbolTable<AST::FunctionDec> functionDecs;
-    // TODO
-    // SymbolTable<std::string> externalFunctions;
     std::deque<llvm::StructType *> staticLink;
+    llvm::AllocaInst *oldFrame{nullptr};
     llvm::AllocaInst *currentFrame;
     size_t currentLevel = 0;
     llvm::Type *intType{llvm::Type::getInt64Ty(context)};

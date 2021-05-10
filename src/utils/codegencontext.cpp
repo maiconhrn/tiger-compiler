@@ -1,12 +1,7 @@
 #include "codegencontext.hpp"
 #include <iostream>
 
-CodeGenContext::CodeGenContext() {
-    types.push("int", intType);
-    types.push("string", stringType);
-    staticLink.push_front(llvm::StructType::create(context, "main"));
-    intrinsic();
-}
+CodeGenContext::CodeGenContext() {}
 
 void CodeGenContext::intrinsic() {
     functions["print"] = createIntrinsicFunction("print", {stringType}, voidType);
@@ -43,6 +38,7 @@ llvm::Value *CodeGenContext::strcmp(llvm::Value *a, llvm::Value *b) {
 
 llvm::Value *CodeGenContext::checkStore(llvm::Value *val, llvm::Value *ptr) {
     val = convertNil(val, ptr);
+
     return builder.CreateStore(val, ptr);
 }
 
@@ -52,9 +48,11 @@ llvm::Value *CodeGenContext::convertNil(llvm::Value *val, llvm::Value *ptr) {
         if (isRecord(type)) {
             return llvm::ConstantPointerNull::get(llvm::cast<llvm::PointerType>(type));
         } else {
+            //TODO verify codegen of rec asigned with nil
             return logErrorV("Nil can only assign to record type");
         }
     }
+
     return val;
 }
 
@@ -70,7 +68,7 @@ llvm::AllocaInst *CodeGenContext::createEntryBlockAlloca(llvm::Function *functio
                                                          llvm::Value *size) {
     llvm::IRBuilder<> TmpB(&function->getEntryBlock(),
                            function->getEntryBlock().begin());
-    return TmpB.CreateAlloca(type, size, name.c_str());
+    return TmpB.CreateAlloca(type, size, name);
 }
 
 llvm::Type *CodeGenContext::getElementType(llvm::Type *type) {
@@ -101,11 +99,7 @@ bool CodeGenContext::isMatch(llvm::Type *a, llvm::Type *b) {
         }
     }
     if (isNil(b)) {
-        if (isRecord(a)) {
-            return true;
-        } else {
-            return false;
-        }
+        return isRecord(a);
     }
     if (isRecord(a) && isRecord(b)) {
         return llvm::cast<llvm::StructType>(getElementType(a))

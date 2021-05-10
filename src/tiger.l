@@ -105,6 +105,7 @@ extern "C" int yywrap(void) {
 <STR>{
 \" 			 {adjust(); yylval.sval = new std::string(strbuf.str()); strbuf.clear(); strbuf.str(std::string()); BEGIN(INITIAL); return STRING;}
         \\n	         {adjust(); strbuf << "\n";}
+        \\b	         {adjust(); strbuf << "\b";}
         \\t	         {adjust(); strbuf << "\t";}
         \\\^[GHIJLM]	 {adjust(); strbuf << yytext;}
         \\[0-9]{3}	 {adjust(); strbuf << yytext;}

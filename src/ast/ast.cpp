@@ -25,6 +25,7 @@ static string getTabs(size_t depth) {
 
 llvm::Type *Root::traverse(vector<VarDec *> &, CodeGenContext &context) {
     context.typeDecs.reset();
+
     return root_->traverse(mainVariableTable_, context);
 }
 
@@ -116,23 +117,24 @@ llvm::Type *CallExp::traverse(vector<VarDec *> &variableTable,
                                  func_.getName() +
                                  " undeclared", func_.getLoc());
     }
-    auto functionType = function->getFunctionType();
+//    auto functionType = function->getFunctionType();
 
-    size_t i = 0u;
-    if (function->getLinkage() == llvm::Function::ExternalLinkage) {
-        i = 0u;
-    } else {
-        i = 1u;
-    }
+//    size_t i = 0u;
+//    if (function->getLinkage() == llvm::Function::ExternalLinkage) {
+//        i = 0u;
+//    } else {
+//        i = 1u;
+//    }
 
-    if (args_.size() != functionType->getNumParams() - i) {
+    if (args_.size() != function->arg_size()) {
         return context.logErrorT("Incorrect number of passed arguments",
                                  getLoc());
     }
 
+    size_t i = 0u;
     for (auto &exp : args_) {
         auto type = exp->traverse(variableTable, context);
-        auto arg = functionType->getParamType(i++);
+        auto arg = function->getFunctionType()->getParamType(i++);
         if (arg != type) {
             return context.logErrorT("Params type not match",
                                      exp->getLoc());
@@ -188,23 +190,23 @@ llvm::Type *Field::traverse(vector<VarDec *> &variableTable,
                          variableTable.size(), context.currentLevel);
     context.valueDecs.push(name_.getName(), varDec_);
     variableTable.push_back(varDec_);
+
     return type_;
 }
 
 llvm::Type *FieldExp::traverse(vector<VarDec *> &variableTable,
                                CodeGenContext &context) {
     type_ = exp_->traverse(variableTable, context);
+
     return type_;
 }
 
 llvm::Type *RecordExp::traverse(vector<VarDec *> &variableTable,
                                 CodeGenContext &context) {
     type_ = context.typeOf(typeName_->getLoc(), typeName_->getName().getName());
-
     if (!type_) {
         return nullptr;
     }
-
     if (!type_->isPointerTy()) {
         return context.logErrorT("Require a record type", typeName_->getLoc());
     }
@@ -216,22 +218,28 @@ llvm::Type *RecordExp::traverse(vector<VarDec *> &variableTable,
 
     auto typeDec = dynamic_cast<RecordType *>(context.typeDecs[typeName_->getName().getName()]);
     assert(typeDec);
-    if (typeDec->fields_.size() != fieldExps_.size())
+    if (typeDec->fields_.size() != fieldExps_.size()) {
         return context.logErrorT("Wrong number of fields", getLoc());
+    }
+
     size_t idx = 0u;
     for (auto &fieldDec : typeDec->fields_) {
         auto &field = fieldExps_[idx];
-        if (field->getName() != fieldDec->getName())
+        if (field->getName() != fieldDec->getName()) {
             return context.logErrorT(
                     field->getName() +
                     " is not a field or not on the right position of "
                     + typeName_->getName().getName(), getLoc());
+        }
+
         auto exp = field->traverse(variableTable, context);
-        if (!context.isMatch(exp, fieldDec->getType()))
+        if (!context.isMatch(exp, fieldDec->getType())) {
             return context.logErrorT("Field type not match", fieldDec->getLoc());
+        }
+
         ++idx;
     }
-    // CHECK NIL
+
     return type_;
 }
 
@@ -381,19 +389,16 @@ llvm::Type *LetExp::traverse(vector<VarDec *> &variableTable,
     context.valueDecs.enter();
     context.functions.enter();
 
-//    for (auto &dec : decs_) {
-//        dec->computeHeaders(variableTable, context);
-//    }
-
     for (auto &dec : decs_) {
         dec->traverse(variableTable, context);
     }
 
     auto body = body_->traverse(variableTable, context);
+
     context.functions.exit();
     context.valueDecs.exit();
-    context.types.exit();
     context.typeDecs.exit();
+    context.types.exit();
 
     return body;
 }
@@ -452,15 +457,18 @@ llvm::Type *ArrayExp::traverse(vector<VarDec *> &variableTable,
 llvm::FunctionType *Prototype::traverse(vector<VarDec *> &variableTable,
                                         CodeGenContext &context) {
     std::vector<llvm::Type *> args;
-    auto linkType = llvm::PointerType::getUnqual(context.staticLink.front());
-    args.push_back(linkType);
-    frame = llvm::StructType::create(context.context, name_.getName() + "Frame");
-    staticLink_ = new VarDec(getLoc(),
-                             Identifier(getLoc(),
-                                        "staticLink"),
-                             linkType, variableTable.size(),
-                             context.currentLevel);
-    variableTable.push_back(staticLink_);
+//    auto linkType = llvm::PointerType::getUnqual(context.staticLink.front());
+//    args.push_back(linkType);
+
+//    frame = llvm::StructType::create(context.context, name_.getName() + "Frame");
+
+//    staticLink_ = new VarDec(getLoc(),
+//                             Identifier(getLoc(),
+//                                        "staticLink"),
+//                             linkType, variableTable.size(),
+//                             context.currentLevel);
+//    variableTable.push_back(staticLink_);
+
     for (auto &field : params_) {
         args.push_back(field->traverse(variableTable, context));
         if (!args.back()) {
@@ -468,18 +476,17 @@ llvm::FunctionType *Prototype::traverse(vector<VarDec *> &variableTable,
         }
     }
 
-    if (result_.getName().empty()) {
-        resultType_ = llvm::Type::getVoidTy(context.context);
-    } else {
-        resultType_ = context.typeOf(getLoc(), result_.getName());
-    }
-
+    resultType_ = result_.getName().empty()
+                  ? llvm::Type::getVoidTy(context.context)
+                  : context.typeOf(getLoc(), result_.getName());
     if (!resultType_) {
         return nullptr;
     }
+
     auto functionType = llvm::FunctionType::get(resultType_, args, false);
     function_ = llvm::Function::Create(functionType, llvm::Function::InternalLinkage,
-                                       name_.getName(), context.module.get());
+                                       getName(), context.module.get());
+
     return functionType;
 }
 
@@ -491,18 +498,15 @@ llvm::Type *FunctionDec::traverse(vector<VarDec *> &, CodeGenContext &context) {
     }
 
     context.valueDecs.enter();
-    level_ = ++context.currentLevel;
 
     auto proto = proto_->traverse(variableTable_, context);
     if (!proto) {
         return nullptr;
     }
 
-    context.staticLink.push_front(proto_->getFrame());
     context.functions.push(name_.getName(), proto_->getFunction());
 
     auto body = body_->traverse(variableTable_, context);
-    context.staticLink.pop_front();
     if (!body) {
         return nullptr;
     }
@@ -565,7 +569,6 @@ llvm::Type *VarDec::traverse(vector<VarDec *> &variableTable,
             return context.logErrorT("Type not match", typeName_->getLoc());
         }
     }
-
     if (!type_) {
         return nullptr;
     }
@@ -656,11 +659,72 @@ llvm::Type *AST::RecordType::traverse(std::set<std::string> &parentName,
     }
 }
 
-bool Root::semanticAnalisys() {
-    CodeGenContext codeGenContext;
-    traverse(mainVariableTable_, codeGenContext);
+bool Root::traverse(CodeGenContext &context) {
+    llvm::InitializeAllTargetInfos();
+    llvm::InitializeAllTargets();
+    llvm::InitializeAllTargetMCs();
+    llvm::InitializeAllAsmParsers();
+    llvm::InitializeAllAsmPrinters();
 
-    return !codeGenContext.hasError;
+    auto targetTriple = llvm::sys::getDefaultTargetTriple();
+    context.module->setTargetTriple(targetTriple);
+
+    std::string error;
+    auto target = llvm::TargetRegistry::lookupTarget(targetTriple, error);
+
+    if (!target) {
+        llvm::errs() << error;
+        return false;
+    }
+
+    auto CPU = "generic";
+    auto features = "";
+
+    llvm::TargetOptions opt;
+    auto RM = llvm::Optional<llvm::Reloc::Model>();
+    context.targetMachine = target->createTargetMachine(targetTriple, CPU, features, opt, RM);
+
+    context.module->setDataLayout(context.targetMachine->createDataLayout());
+
+    std::vector<llvm::Type *> args;
+    auto mainProto = llvm::FunctionType::get(llvm::Type::getInt64Ty(context.context),
+                                             llvm::makeArrayRef(args),
+                                             false);
+    context.mainFunction = llvm::Function::Create(mainProto,
+                                                  llvm::GlobalValue::ExternalLinkage,
+                                                  "main",
+                                                  context.module.get());
+    context.staticLink.push_front(llvm::StructType::create(context.context,
+                                                           "main"));
+
+    auto block = llvm::BasicBlock::Create(context.context, "entry", context.mainFunction);
+    context.types["int"] = context.intType;
+    context.types["string"] = context.stringType;
+    context.intrinsic();
+
+    traverse(mainVariableTable_, context);
+
+    if (context.hasError) {
+        return false;
+    }
+
+    context.valueDecs.reset();
+    context.functionDecs.reset();
+    context.builder.SetInsertPoint(block);
+    std::vector<llvm::Type *> localVar;
+
+    for (auto &var : mainVariableTable_) {
+        localVar.push_back(var->getType());
+        context.valueDecs.push(var->getName(), var);
+    }
+
+    context.staticLink.front()->setBody(localVar);
+    context.currentFrame = context.createEntryBlockAlloca(context.mainFunction,
+                                                          context.staticLink.front(),
+                                                          "mainframe");
+    context.currentLevel = 0;
+
+    return !context.hasError;
 }
 
 void Root::print(int depth) {
@@ -1098,56 +1162,4 @@ void FunctionDec::print(int depth) {
     body_->print(depth + 1);
 
     cout << tabs << ")" << endl;
-}
-
-llvm::Type *FunctionDec::computeHeaders(vector<VarDec *> &variableTable,
-                                        CodeGenContext &context) {
-    if (context.functions.lookupOne(name_.getName())) {
-        return context.logErrorT("Function "
-                                 + name_.getName() +
-                                 " is already defined in same scope.", name_.getLoc());
-    }
-
-    context.valueDecs.enter();
-    level_ = ++context.currentLevel;
-
-    auto proto = proto_->traverse(variableTable_, context);
-    if (!proto) {
-        return nullptr;
-    }
-
-    context.staticLink.push_front(proto_->getFrame());
-    context.functions.push(name_.getName(), proto_->getFunction());
-
-    auto body = body_->traverse(variableTable_, context);
-    context.staticLink.pop_front();
-    if (!body) {
-        return nullptr;
-    }
-
-    context.valueDecs.exit();
-    --context.currentLevel;
-
-    auto retType = proto_->getResultType();
-
-    if (!body->isVoidTy() && retType->isVoidTy()) {
-        return context.logErrorT("Procedure can not returns a value", getLoc());
-    }
-
-    if (!retType->isVoidTy() && retType != body) {
-        return context.logErrorT("Function return type not match",
-                                 proto_->getResult().getName().empty()
-                                 ? getLoc()
-                                 : proto_->getResult().getLoc());
-    }
-
-    return context.voidType;
-}
-
-llvm::Type *VarDec::computeHeaders(vector<VarDec *> &variableTable, CodeGenContext &context) {
-    return nullptr;
-}
-
-llvm::Type *TypeDec::computeHeaders(vector<VarDec *> &variableTable, CodeGenContext &context) {
-    return nullptr;
 }

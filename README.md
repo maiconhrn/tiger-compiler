@@ -4,10 +4,11 @@ Implementation of a compiler of Tiger language for Informatics college course at
 # Prerequisites
 - Linux based system
 - g++ 9.3.0>=
-- QT 5>= (qmake)
+- clang++>=10
+- QT 5 (qmake)
 - flex 2.6.4>=
 - bison 3.5.1>=
-- LLVM 10>= (If is highier version, you need to change the value of "LLVM" variable in  [tiger-compiler.pro](./tiger-compiler.pro))
+- LLVM 10 (Maybe you will need to change the value of "LLVM" variable in [tiger-compiler.pro](./tiger-compiler.pro) to a your PC settings compatible value)
 
 # Instructions
 The compile phase generated files will be placed in "{{projectRootDir}}/build/" directory.
@@ -28,7 +29,7 @@ $ ./build/tc -p {{path to the file with Tiger code}}
 ```
 
 # Examples
-You can use the [test.tig](./test.tig) file for test
+You can use the [test.tig](./test.tig) file for test.
 
 ex:  
 ```shell
