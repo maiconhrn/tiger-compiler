@@ -24,7 +24,7 @@ namespace AST {
     using std::cerr;
     using std::endl;
 
-    const static std::string TAB = "  ";
+    const static string TAB = "  ";
 
     class VarDec;
 
@@ -151,19 +151,15 @@ namespace AST {
         void print(int depth) override;
     };
 
-    /*TODO:
-    codigo de declaracao tiger; passar duas vezes na verificacao
-
-    1. adiciona o cabeçalho
-    2. processa o corpo*/
     class Dec : public Node {
     protected:
         Location loc_;
         Identifier name_;
+        string concreteType_;
 
     public:
-        Dec(Location loc, Identifier name) :
-                loc_(move(loc)), name_(name) {}
+        Dec(Location loc, Identifier name, string concreteType) :
+                loc_(move(loc)), name_(name), concreteType_(move(concreteType)) {}
 
         Location &getLoc() {
             return loc_;
@@ -171,6 +167,19 @@ namespace AST {
 
         void print(int depth) override {
             std::cerr << "Print not implented" << endl;
+        }
+
+        virtual void computeHeaderTraverse(vector<VarDec *> &,
+                                           CodeGenContext &) = 0;
+
+        virtual llvm::Value *computeHeaderCodegen(CodeGenContext &) = 0;
+
+        const string &getName() {
+            return name_.getName();
+        }
+
+        const string &getConcreteType() {
+            return concreteType_;
         }
     };
 
@@ -685,7 +694,7 @@ namespace AST {
     public:
         FunctionDec(Location loc, Identifier name,
                     unique_ptr<Prototype> proto, unique_ptr<Exp> body)
-                : Dec(move(loc), move(name)), proto_(move(proto)), body_(move(body)) {}
+                : Dec(move(loc), move(name), "FunctionDec"), proto_(move(proto)), body_(move(body)) {}
 
         Value *codegen(CodeGenContext &context) override;
 
@@ -701,6 +710,11 @@ namespace AST {
         }
 
         void print(int depth) override;
+
+        void computeHeaderTraverse(vector<VarDec *> &vector,
+                                   CodeGenContext &context) override;
+
+        llvm::Value *computeHeaderCodegen(CodeGenContext &context) override;
     };
 
     class NameType;
@@ -711,27 +725,33 @@ namespace AST {
         size_t offset_;
         size_t level_;
         llvm::Type *type_{nullptr};
+        bool global{false};
 
     public:
         VarDec(Location loc, Identifier name, unique_ptr<NameType> type, unique_ptr<Exp> init)
-                : Dec(move(loc), move(name)), typeName_(move(type)), init_(move(init)) {}
+                : Dec(move(loc), move(name), "VarDec"), typeName_(move(type)), init_(move(init)) {}
 
         VarDec(Location loc, Identifier name, llvm::Type *type, size_t const &offset,
                size_t const &level)
-                : Dec(move(loc), move(name)), offset_(offset), level_(level), type_(type) {}
+                : Dec(move(loc), move(name), "VarDec"), offset_(offset), level_(level), type_(type) {}
 
         Value *codegen(CodeGenContext &context) override;
 
         llvm::Type *getType() const { return type_; }
 
-        string &getName() {
-            return name_.getName();
-        }
-
         llvm::Type *traverse(vector<VarDec *> &variableTable,
                              CodeGenContext &context) override;
 
         void print(int depth) override;
+
+        void computeHeaderTraverse(vector<VarDec *> &vector,
+                                   CodeGenContext &context) override;
+
+        llvm::Value *computeHeaderCodegen(CodeGenContext &context) override;
+
+        bool isGlobal() {
+            return global;
+        }
     };
 
     class TypeDec : public Dec {
@@ -741,7 +761,7 @@ namespace AST {
         TypeDec(Location loc,
                 Identifier name,
                 unique_ptr<Type> type)
-                : Dec(move(loc), move(name)), type_(move(type)) {}
+                : Dec(move(loc), move(name), "TypeDec"), type_(move(type)) {}
 
         Value *codegen(CodeGenContext &context) override;
 
@@ -749,6 +769,11 @@ namespace AST {
                              CodeGenContext &context) override;
 
         void print(int depth) override;
+
+        void computeHeaderTraverse(vector<VarDec *> &vector,
+                                   CodeGenContext &context) override;
+
+        llvm::Value *computeHeaderCodegen(CodeGenContext &context) override;
     };
 
     class NameType : public Type {

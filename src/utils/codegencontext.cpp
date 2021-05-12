@@ -139,5 +139,6 @@ llvm::Type *CodeGenContext::typeOf(const AST::Location &loc,
 
 llvm::Type *CodeGenContext::typeOf(const AST::Location &loc, const std::string &name) {
     std::set<std::string> parentName;
+
     return typeOf(loc, name, parentName);
 }

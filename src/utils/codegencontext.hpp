@@ -31,6 +31,8 @@ namespace AST {
     class FunctionDec;
 
     class Location;
+
+    class Dec;
 }  // namespace AST
 
 class CodeGenContext {
@@ -45,6 +47,7 @@ public:
     llvm::IRBuilder<> builder{context};
     std::unique_ptr<llvm::Module> module{std::make_unique<llvm::Module>("main", context)};
     SymbolTable<AST::VarDec> valueDecs;
+    AST::Dec *lastDec;
     SymbolTable<llvm::AllocaInst> namedValues;
     SymbolTable<llvm::Type> types;
     SymbolTable<AST::Type> typeDecs;

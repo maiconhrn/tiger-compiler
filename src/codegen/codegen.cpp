@@ -45,6 +45,7 @@ llvm::Value *AST::Root::codegen(CodeGenContext &context) {
 
 llvm::Value *AST::SimpleVar::codegen(CodeGenContext &context) {
     auto var = context.namedValues[name_.getName()];
+
     if (!var) {
         return context.logErrorV("Unknown variable name " + name_.getName());
     }
@@ -160,6 +161,9 @@ llvm::Value *AST::SequenceExp::codegen(CodeGenContext &context) {
 
     for (auto &exp : exps_) {
         last = exp->codegen(context);
+        if (!last) {
+            return nullptr;
+        }
     }
 
     return last;
@@ -171,7 +175,13 @@ llvm::Value *AST::LetExp::codegen(CodeGenContext &context) {
     context.functionDecs.enter();
 
     for (auto &dec : decs_) {
-        dec->codegen(context);
+        dec->computeHeaderCodegen(context);
+    }
+
+    for (auto &dec : decs_) {
+        if (!dec->codegen(context)) {
+            return nullptr;
+        }
     }
 
     auto result = body_->codegen(context);
@@ -442,19 +452,19 @@ llvm::Value *AST::FieldExp::codegen(CodeGenContext &context) {
 }
 
 llvm::Value *AST::RecordExp::codegen(CodeGenContext &context) {
+    llvm::Type *objType = context.module->getTypeByName(typeName_->getName().getName());
+
     context.builder.GetInsertBlock()->getParent();
 
-    if (!type_) {
+    if (!objType) {
         return nullptr;
     }
 
-    auto eleType = context.getElementType(type_);
-    auto size = context.module->getDataLayout().getTypeAllocSize(eleType);
-    llvm::Value *var = context.builder.CreateCall(context.allocaRecordFunction,
-                                                  llvm::ConstantInt::get(context.intType,
-                                                                         llvm::APInt(64, size)),
-                                                  "alloca");
-    var = context.builder.CreateBitCast(var, type_, "record");
+    llvm::Value *objDummyPtr = context.builder.CreateConstGEP1_64(llvm::Constant::getNullValue(objType->getPointerTo()),
+                                                                  1, "objsize");
+    llvm::Value *objSize = context.builder.CreatePointerCast(objDummyPtr, llvm::Type::getInt64Ty(context.context));
+    llvm::Value *objVoidPtr = context.builder.CreateCall(context.allocaRecordFunction, objSize);
+    llvm::Value *obj = context.builder.CreatePointerCast(objVoidPtr, objType->getPointerTo());
 
     size_t idx = 0u;
     for (auto &field : fieldExps_) {
@@ -469,17 +479,14 @@ llvm::Value *AST::RecordExp::codegen(CodeGenContext &context) {
 
         //TODO adjust assertion error:
         //tc: /usr/lib/llvm-10/include/llvm/IR/Instructions.h:927: static llvm::GetElementPtrInst* llvm::GetElementPtrInst::Create(llvm::Type*, llvm::Value*, llvm::ArrayRef<llvm::Value*>, const llvm::Twine&, llvm::Instruction*): Assertion `PointeeType == cast<PointerType>(Ptr->getType()->getScalarType())->getElementType()' failed.
-        auto elementPtr = context.builder
-                .CreateGEP(field->type_,
-                           var,
-                           llvm::ConstantInt::get(llvm::Type::getInt64Ty(context.context),
-                                                  llvm::APInt(64, idx)),
-                           "elementPtr");
+        auto elementPtr = context.builder.CreateStructGEP(obj,
+                                                          idx,
+                                                          "elementPtr");
         context.checkStore(exp, elementPtr);
         ++idx;
     }
 
-    return var;
+    return obj;
 }
 
 llvm::Value *AST::StringExp::codegen(CodeGenContext &context) {
@@ -495,9 +502,12 @@ llvm::Function *AST::Prototype::codegen(CodeGenContext &) {
     return function_;
 }
 
-llvm::Value *AST::FunctionDec::codegen(CodeGenContext &context) {
-    if (context.functionDecs.lookupOne(name_.getName())) {
-        return context.logErrorV("Function " + name_.getName() +
+llvm::Value *AST::FunctionDec::computeHeaderCodegen(CodeGenContext &context) {
+    if (context.functions.lookupOne(name_.getName())
+        && this->getConcreteType() == (context.lastDec ? context.lastDec->getConcreteType() : "")
+        && this->getName() == context.lastDec->getName()) {
+        return context.logErrorV("Function "
+                                 + name_.getName() +
                                  " is already defined in same scope.");
     }
 
@@ -507,6 +517,13 @@ llvm::Value *AST::FunctionDec::codegen(CodeGenContext &context) {
     }
 
     context.functionDecs.push(name_.getName(), this);
+    context.lastDec = this;
+
+    return function;
+}
+
+llvm::Value *AST::FunctionDec::codegen(CodeGenContext &context) {
+    auto function = proto_->getFunction();
 
     auto oldBB = context.builder.GetInsertBlock();
 
@@ -553,9 +570,18 @@ llvm::Value *AST::FunctionDec::codegen(CodeGenContext &context) {
     return context.logErrorV("Function " + name_.getName() + " genteration failed");
 }
 
+llvm::Value *AST::VarDec::computeHeaderCodegen(CodeGenContext &context) {
+    context.lastDec = this;
+
+    return nullptr;
+}
+
 llvm::Value *AST::VarDec::codegen(CodeGenContext &context) {
-    llvm::Function *function = context.builder.GetInsertBlock()->getParent();
-    auto *alloca = context.createEntryBlockAlloca(function, type_, getName());
+    auto value = context.namedValues.lookupOne(name_.getName());
+    auto *function = context.builder.GetInsertBlock()->getParent();
+    auto *alloca = value
+                   ? value
+                   : context.createEntryBlockAlloca(function, type_, getName());
 
     auto init = init_->codegen(context);
     if (!init) {
@@ -568,6 +594,12 @@ llvm::Value *AST::VarDec::codegen(CodeGenContext &context) {
     context.valueDecs.push(getName(), this);
 
     return alloca;
+}
+
+llvm::Value *AST::TypeDec::computeHeaderCodegen(CodeGenContext &context) {
+    context.lastDec = this;
+
+    return nullptr;
 }
 
 llvm::Value *AST::TypeDec::codegen(CodeGenContext &context) {
