@@ -98,11 +98,11 @@ llvm::Value *AST::ForExp::codegen(CodeGenContext &context) {
     context.builder.CreateBr(testBB);
     context.builder.SetInsertPoint(testBB);
 
-    auto EndCond = context.builder.CreateICmpSLE(context.builder.CreateLoad((llvm::Value *) alloca,
+    auto endCond = context.builder.CreateICmpSLE(context.builder.CreateLoad((llvm::Value *) alloca,
                                                                             var_.getName()), high,
                                                  "loopcond");
 
-    context.builder.CreateCondBr(EndCond, loopBB, afterBB);
+    context.builder.CreateCondBr(endCond, loopBB, afterBB);
 
     context.builder.SetInsertPoint(loopBB);
 
@@ -122,10 +122,8 @@ llvm::Value *AST::ForExp::codegen(CodeGenContext &context) {
         return nullptr;
     }
 
-    // goto next:
     context.builder.CreateBr(nextBB);
 
-    // next:
     context.builder.SetInsertPoint(nextBB);
 
     auto nextVar = context.builder.CreateAdd(context.builder.CreateLoad((llvm::Value *) alloca,
@@ -137,7 +135,6 @@ llvm::Value *AST::ForExp::codegen(CodeGenContext &context) {
 
     context.builder.CreateBr(testBB);
 
-    // after:
     context.builder.SetInsertPoint(afterBB);
 
     if (oldVal && oldValN) {
@@ -203,8 +200,7 @@ llvm::Value *AST::VarExp::codegen(CodeGenContext &context) {
         return nullptr;
     }
 
-    return context.builder.CreateLoad(((llvm::AllocaInst *) var)->getAllocatedType(),
-                                      var, var->getName());
+    return context.builder.CreateLoad(var, var->getName());
 }
 
 llvm::Value *AST::AssignExp::codegen(CodeGenContext &context) {
@@ -577,23 +573,30 @@ llvm::Value *AST::VarDec::computeHeaderCodegen(CodeGenContext &context) {
 }
 
 llvm::Value *AST::VarDec::codegen(CodeGenContext &context) {
-    auto value = context.namedValues.lookupOne(name_.getName());
-    auto *function = context.builder.GetInsertBlock()->getParent();
-    auto *alloca = value
-                   ? value
-                   : context.createEntryBlockAlloca(function, type_, getName());
+    auto value = context.namedValues.lookupOne(getName());
+    llvm::Value *var{nullptr};
+    if (value && ((llvm::PointerType *) value)->getElementType() == type_) {
+        var = value;
+    }
 
     auto init = init_->codegen(context);
     if (!init) {
         return nullptr;
     }
 
-    context.builder.CreateStore(init, alloca);
+    if (!var) {
+        var = new llvm::GlobalVariable(*context.module, type_, false,
+                                       llvm::GlobalValue::ExternalLinkage,
+                                       (llvm::Constant *) llvm::ConstantInt::get(context.intType, llvm::APInt(8, 0)),
+                                       getName());
+    }
 
-    context.namedValues.push(getName(), alloca);
+    context.builder.CreateStore(init, var);
+
+    context.namedValues.push(getName(), var);
     context.valueDecs.push(getName(), this);
 
-    return alloca;
+    return var;
 }
 
 llvm::Value *AST::TypeDec::computeHeaderCodegen(CodeGenContext &context) {

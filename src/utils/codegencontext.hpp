@@ -48,7 +48,7 @@ public:
     std::unique_ptr<llvm::Module> module{std::make_unique<llvm::Module>("main", context)};
     SymbolTable<AST::VarDec> valueDecs;
     AST::Dec *lastDec;
-    SymbolTable<llvm::AllocaInst> namedValues;
+    SymbolTable<llvm::Value> namedValues;
     SymbolTable<llvm::Type> types;
     SymbolTable<AST::Type> typeDecs;
     llvm::Function *mainFunction;

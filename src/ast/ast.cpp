@@ -395,20 +395,22 @@ llvm::Type *LetExp::traverse(vector<VarDec *> &variableTable,
 
 void TypeDec::computeHeaderTraverse(vector<VarDec *> &vector,
                                     CodeGenContext &context) {
-    context.lastDec = this;
-}
-
-llvm::Type *TypeDec::traverse(vector<VarDec *> &, CodeGenContext &context) {
     if (context.typeDecs.lookupOne(name_.getName())) {
-        return context.logErrorT("Type "
-                                 + name_.getName()
-                                 + " is already defined in same scope.",
-                                 name_.getLoc());
+        context.logErrorT("Type "
+                          + name_.getName()
+                          + " is already defined in same scope.",
+                          name_.getLoc());
+
+        return;
     }
+
+    context.lastDec = this;
 
     type_->setName(name_);
     context.typeDecs[name_.getName()] = type_.get();
+}
 
+llvm::Type *TypeDec::traverse(vector<VarDec *> &, CodeGenContext &context) {
     return context.voidType;
 }
 

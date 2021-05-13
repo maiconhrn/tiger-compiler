@@ -46,7 +46,9 @@ char *chr(int c) {
     return new char[2]{(char) (c), '\0'};
 }
 
-int size(char *c) { return std::strlen(c); }
+int size(char *c) { 
+    return std::strlen(c);
+}
 
 char *substring(char *s, int first, int n) {
     char *result = new char[n + 1];
