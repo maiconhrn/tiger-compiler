@@ -7,9 +7,13 @@
 llvm::Value *AST::Root::codegen(CodeGenContext &context) {
     llvm::legacy::PassManager pm;
 
+//    pm.add(llvm::createPrintModulePass(llvm::outs())); // to print IR text on stdout
+
     root_->codegen(context);
     context.builder.CreateRet(llvm::ConstantInt::get(llvm::Type::getInt64Ty(context.context),
                                                      llvm::APInt(64, 0)));
+
+//    pm.run(*context.module); // to print IR text on stdout
 
     if (llvm::verifyFunction(*context.mainFunction, &llvm::errs())) {
         return context.logErrorV("Generate fail");
@@ -59,6 +63,10 @@ llvm::Value *AST::IntExp::codegen(CodeGenContext &context) {
 
 llvm::Value *AST::BreakExp::codegen(CodeGenContext &context) {
     context.builder.CreateBr(std::get<1>(context.loopStack.top()));
+
+    context.builder.SetInsertPoint(llvm::BasicBlock::Create(context.context,
+                                                            "break",
+                                                            context.builder.GetInsertBlock()->getParent()));
 
     return llvm::Constant::getNullValue(llvm::Type::getInt64Ty(context.context));
 }

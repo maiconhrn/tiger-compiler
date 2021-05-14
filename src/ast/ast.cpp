@@ -295,6 +295,8 @@ llvm::Type *IfExp::traverse(vector<VarDec *> &variableTable,
 
 llvm::Type *WhileExp::traverse(vector<VarDec *> &variableTable,
                                CodeGenContext &context) {
+    context.inLoopStack.push(true);
+
     auto test = test_->traverse(variableTable, context);
     if (!test) {
         return nullptr;
@@ -309,12 +311,16 @@ llvm::Type *WhileExp::traverse(vector<VarDec *> &variableTable,
     if (bodyType != context.voidType) {
         return context.logErrorT("While Body do not returns value", body_->getLoc());
     }
+
+    context.inLoopStack.pop();
 
     return context.voidType;
 }
 
 llvm::Type *DoWhileExp::traverse(vector<VarDec *> &variableTable,
                                  CodeGenContext &context) {
+    context.inLoopStack.push(true);
+
     auto test = test_->traverse(variableTable, context);
     if (!test) {
         return nullptr;
@@ -330,11 +336,15 @@ llvm::Type *DoWhileExp::traverse(vector<VarDec *> &variableTable,
         return context.logErrorT("While Body do not returns value", body_->getLoc());
     }
 
+    context.inLoopStack.pop();
+
     return context.voidType;
 }
 
 llvm::Type *ForExp::traverse(vector<VarDec *> &variableTable,
                              CodeGenContext &context) {
+    context.inLoopStack.push(true);
+
     auto low = low_->traverse(variableTable, context);
     if (!low) {
         return nullptr;
@@ -360,11 +370,18 @@ llvm::Type *ForExp::traverse(vector<VarDec *> &variableTable,
         return nullptr;
     }
 
+    context.inLoopStack.pop();
+    
     return context.voidType;
 }
 
 llvm::Type *AST::BreakExp::traverse(vector<VarDec *> &,
                                     CodeGenContext &context) {
+    if (context.inLoopStack.empty() || !context.inLoopStack.top()) {
+        return context.logErrorT("Break is only allowed on Loop statements",
+                                 getLoc());
+    }
+
     return context.voidType;
 }
 

@@ -113,6 +113,8 @@ public:
 
     llvm::Type *typeOf(const AST::Location &loc, const std::string &name);
 
+    std::stack<bool> inLoopStack;
+
     CodeGenContext();
 };
 
