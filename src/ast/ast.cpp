@@ -376,11 +376,15 @@ llvm::Type *LetExp::traverse(vector<VarDec *> &variableTable,
     context.functions.enter();
 
     for (auto &dec : decs_) {
-        dec->computeHeaderTraverse(variableTable, context);
+        if (!dec->computeHeaderTraverse(variableTable, context)) {
+            return nullptr;
+        }
     }
 
     for (auto &dec : decs_) {
-        dec->traverse(variableTable, context);
+        if (!dec->traverse(variableTable, context)) {
+            return nullptr;
+        }
     }
 
     auto body = body_->traverse(variableTable, context);
@@ -393,7 +397,7 @@ llvm::Type *LetExp::traverse(vector<VarDec *> &variableTable,
     return body;
 }
 
-void TypeDec::computeHeaderTraverse(vector<VarDec *> &vector,
+bool TypeDec::computeHeaderTraverse(vector<VarDec *> &vector,
                                     CodeGenContext &context) {
     if (context.typeDecs.lookupOne(name_.getName())) {
         context.logErrorT("Type "
@@ -401,13 +405,15 @@ void TypeDec::computeHeaderTraverse(vector<VarDec *> &vector,
                           + " is already defined in same scope.",
                           name_.getLoc());
 
-        return;
+        return false;
     }
 
     context.lastDec = this;
 
     type_->setName(name_);
     context.typeDecs[name_.getName()] = type_.get();
+
+    return true;
 }
 
 llvm::Type *TypeDec::traverse(vector<VarDec *> &, CodeGenContext &context) {
@@ -476,7 +482,7 @@ llvm::FunctionType *Prototype::traverse(vector<VarDec *> &variableTable,
     return functionType;
 }
 
-void FunctionDec::computeHeaderTraverse(vector<VarDec *> &vector,
+bool FunctionDec::computeHeaderTraverse(vector<VarDec *> &vector,
                                         CodeGenContext &context) {
     if (context.functions.lookupOne(name_.getName())
         && this->getConcreteType() == (context.lastDec ? context.lastDec->getConcreteType() : "")
@@ -485,12 +491,12 @@ void FunctionDec::computeHeaderTraverse(vector<VarDec *> &vector,
                           + name_.getName() +
                           " is already defined in same scope.", name_.getLoc());
 
-        return;
+        return false;
     }
 
     auto proto = proto_->traverse(variableTable_, context);
     if (!proto) {
-        return;
+        return false;
     }
 
     context.valueDecs.enter();
@@ -499,6 +505,8 @@ void FunctionDec::computeHeaderTraverse(vector<VarDec *> &vector,
     context.lastDec = this;
 
     context.valueDecs.exit();
+
+    return true;
 }
 
 llvm::Type *FunctionDec::traverse(vector<VarDec *> &, CodeGenContext &context) {
@@ -536,9 +544,11 @@ llvm::Type *SimpleVar::traverse(vector<VarDec *> &, CodeGenContext &context) {
     return type->getType();
 }
 
-void VarDec::computeHeaderTraverse(vector<VarDec *> &vector,
+bool VarDec::computeHeaderTraverse(vector<VarDec *> &vector,
                                    CodeGenContext &context) {
     context.lastDec = this;
+
+    return true;
 }
 
 llvm::Type *VarDec::traverse(vector<VarDec *> &variableTable,
@@ -566,6 +576,14 @@ llvm::Type *VarDec::traverse(vector<VarDec *> &variableTable,
     }
     if (!type_) {
         return nullptr;
+    }
+
+    auto recordExp = dynamic_cast<RecordExp *>(init_.get());
+    auto arrayExp = dynamic_cast<ArrayExp *>(init_.get());
+    if (typeName_
+        && (recordExp && typeName_->getName().getName() != recordExp->getTypeName()
+            || arrayExp && typeName_->getName().getName() != arrayExp->getTypeName())) {
+        return context.logErrorT("Type not match", typeName_->getLoc());
     }
 
     context.valueDecs.lookupOne(name_.getName()) = this;

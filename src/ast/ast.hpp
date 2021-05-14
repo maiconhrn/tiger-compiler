@@ -169,7 +169,7 @@ namespace AST {
             std::cerr << "Print not implented" << endl;
         }
 
-        virtual void computeHeaderTraverse(vector<VarDec *> &,
+        virtual bool computeHeaderTraverse(vector<VarDec *> &,
                                            CodeGenContext &) = 0;
 
         virtual llvm::Value *computeHeaderCodegen(CodeGenContext &) = 0;
@@ -447,7 +447,20 @@ namespace AST {
         void print(int depth) override;
     };
 
-    class NameType;
+    class NameType : public Type {
+        Identifier type_;
+
+    public:
+        NameType(Location loc, Identifier type) :
+
+                Type(move(loc), type),
+                type_(type) {}
+
+        llvm::Type *traverse(std::set<string> &parentName,
+                             CodeGenContext &context) override;
+
+        void print(int depth) override;
+    };
 
     class RecordExp : public Exp {
         friend class RecordType;
@@ -470,6 +483,10 @@ namespace AST {
                              CodeGenContext &context) override;
 
         void print(int depth) override;
+
+        const std::string getTypeName() {
+            return typeName_->getName().getName();
+        }
     };
 
     class SequenceExp : public Exp {
@@ -629,6 +646,10 @@ namespace AST {
                              CodeGenContext &context) override;
 
         void print(int depth) override;
+
+        const std::string getTypeName() {
+            return typeName_->getName().getName();
+        }
     };
 
     class Prototype {
@@ -711,7 +732,7 @@ namespace AST {
 
         void print(int depth) override;
 
-        void computeHeaderTraverse(vector<VarDec *> &vector,
+        bool computeHeaderTraverse(vector<VarDec *> &vector,
                                    CodeGenContext &context) override;
 
         llvm::Value *computeHeaderCodegen(CodeGenContext &context) override;
@@ -744,7 +765,7 @@ namespace AST {
 
         void print(int depth) override;
 
-        void computeHeaderTraverse(vector<VarDec *> &vector,
+        bool computeHeaderTraverse(vector<VarDec *> &vector,
                                    CodeGenContext &context) override;
 
         llvm::Value *computeHeaderCodegen(CodeGenContext &context) override;
@@ -770,25 +791,10 @@ namespace AST {
 
         void print(int depth) override;
 
-        void computeHeaderTraverse(vector<VarDec *> &vector,
+        bool computeHeaderTraverse(vector<VarDec *> &vector,
                                    CodeGenContext &context) override;
 
         llvm::Value *computeHeaderCodegen(CodeGenContext &context) override;
-    };
-
-    class NameType : public Type {
-        Identifier type_;
-
-    public:
-        NameType(Location loc, Identifier type) :
-
-                Type(move(loc), type),
-                type_(type) {}
-
-        llvm::Type *traverse(std::set<string> &parentName,
-                             CodeGenContext &context) override;
-
-        void print(int depth) override;
     };
 
     class RecordType : public Type {
