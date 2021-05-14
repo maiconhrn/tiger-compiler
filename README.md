@@ -38,8 +38,9 @@ $ ./build/tc -p test.tig -lsrc/utils/runtime.cpp
 
 Compile exec options are:  
  - "-p {{path to the file with Tiger code}}" : specifies the path of the file with Tiger code to be compiled.
- - "-a" : print generated ABS for "-p" file".
- - "-i {{output file}}" : output LLVM IR text representation for "-p" file".
- - "-o {{output file}}" : output the compiled executable for "-p" file".
- - "-l{{lib path}}" : add external lib to be compiled with "-p" file".   
+ - "-a" : print generated ABS for "-p" file.
+ - "-i {{output file}}" : output LLVM IR text representation for "-p" file.
+ - "-o {{output file}}" : output the compiled executable for "-p" file.
+ - "-l{{lib path}}" : add external lib to be compiled with "-p" file.
+ - "-no-codegen" : skips the codegen phase, i.e., execute only Syntactic and Semantic analysis.  
 OBS: the use of "-p {{path to the file with Tiger code}}" and "-l{{path to runtime.cpp or runtime.o file}}" options are obligatory.

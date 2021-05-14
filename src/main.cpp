@@ -90,7 +90,8 @@ int main(int argc, char **argv) {
              << "      \"-a\" : print generated ABS for \"-p\" file" << endl
              << "      \"-i {{output file}}\" : output LLVM IR text representation for \"-p\" file" << endl
              << "      \"-o {{output file}}\" : output the compiled executable for \"-p\" file" << endl
-             << "      \"-l{{lib path}}\" : add lib to be compiled with \"-p\" file" << endl;
+             << "      \"-l{{lib path}}\" : add lib to be compiled with \"-p\" file" << endl
+             << "      \"-no-codegen\" : skips the codegen phase, i.e., execute only Syntactic and Semantic analysis" << endl;
         exit(EXIT_FAILURE);
     }
 
@@ -128,8 +129,10 @@ int main(int argc, char **argv) {
         printABS();
     }
 
-    codegen(codeGenContext);
-    executablegen(codeGenContext);
+    if (std::find(args.begin(), args.end(), "-no-codegen") == args.end()) {
+        codegen(codeGenContext);
+        executablegen(codeGenContext);
+    }
 
     exit(EXIT_SUCCESS);
 }
