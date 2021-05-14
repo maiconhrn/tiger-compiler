@@ -25,7 +25,7 @@ To compile run:
 
 To execute run:  
 ```shell
-$ ./build/tc -p {{path to the file with Tiger code}}
+$ ./build/tc -p {{path to the file with Tiger code}} -l{{path to runtime.cpp or runtime.o file}}
 ```
 
 # Examples
@@ -33,5 +33,13 @@ You can use the [test.tig](./test.tig) file for test.
 
 ex:  
 ```shell
-$ ./build/tc -p test.tig
-```
+$ ./build/tc -p test.tig -lsrc/utils/runtime.cpp
+```   
+
+Compile exec options are:  
+ - "-p {{path to the file with Tiger code}}" : specifies the path of the file with Tiger code to be compiled.
+ - "-a" : print generated ABS for "-p" file".
+ - "-i {{output file}}" : output LLVM IR text representation for "-p" file".
+ - "-o {{output file}}" : output the compiled executable for "-p" file".
+ - "-l{{lib path}}" : add external lib to be compiled with "-p" file".   
+OBS: the use of "-p {{path to the file with Tiger code}}" and "-l{{path to runtime.cpp or runtime.o file}}" options are obligatory.

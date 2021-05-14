@@ -86,7 +86,8 @@ int main(int argc, char **argv) {
     if (args.size() < 3 ||
         std::find(args.begin(), args.end(), "-p") == args.end()) {
         cerr << "Usage: <executable> -p filename" << endl
-             << "opts: \"-a\" : print generated ABS for \"-p\" file" << endl
+             << "opts: \"-p {{path to the file with Tiger code}}\" : specifies the path of the file with Tiger code to be compiled" << endl
+             << "      \"-a\" : print generated ABS for \"-p\" file" << endl
              << "      \"-i {{output file}}\" : output LLVM IR text representation for \"-p\" file" << endl
              << "      \"-o {{output file}}\" : output the compiled executable for \"-p\" file" << endl
              << "      \"-l{{lib path}}\" : add lib to be compiled with \"-p\" file" << endl;
