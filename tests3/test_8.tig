@@ -1,0 +1,25 @@
+/* create a list of strings, concatenate all e then print the frase. */
+
+let
+    type strarr = array of string
+
+    var arrsize := 3
+    var arr : strarr := strarr [arrsize] of ""
+
+    function concatStrArr(arr : strarr, size : int) : string =
+		let
+			var concated := ""
+		in
+			for i := 0 to size - 1 do
+                concated := concat(concated, arr[i]);
+
+            concated
+		end
+in
+    arr[0] := "Hello, ";
+    arr[1] := "World";
+    arr[2] := "!!!!";
+
+    print(concatStrArr(arr, arrsize));
+    print("\n")
+end

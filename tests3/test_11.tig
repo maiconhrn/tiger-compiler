@@ -1,0 +1,107 @@
+/*************************************************************************/
+/*                                                                       */
+/*   SNU-RT Benchmark Suite for Worst Case Timing Analysis               */
+/*   =====================================================               */
+/*                              Collected and Modified by S.-S. Lim      */
+/*                                           sslim@archi.snu.ac.kr       */
+/*                                         Real-Time Research Group      */
+/*                                        Seoul National University      */
+/*                                                                       */
+/*                                                                       */
+/*        < Features > - restrictions for our experimental environment   */
+/*                                                                       */
+/*          1. Completely structured.                                    */
+/*               - There are no unconditional jumps.                     */
+/*               - There are no exit from loop bodies.                   */
+/*                 (There are no 'break' or 'return' in loop bodies)     */
+/*          2. No 'switch' statements.                                   */
+/*          3. No 'do..while' statements.                                */
+/*          4. Expressions are restricted.                               */
+/*               - There are no multiple expressions joined by 'or',     */
+/*                'and' operations.                                      */
+/*          5. No library calls.                                         */
+/*               - All the functions needed are implemented in the       */
+/*                 source file.                                          */
+/*                                                                       */
+/*                                                                       */
+/*************************************************************************/
+/*                                                                       */
+/*  FILE: bs.c                                                           */
+/*  SOURCE : Public Domain Code                                          */
+/*                                                                       */
+/*  DESCRIPTION :                                                        */
+/*                                                                       */
+/*     Binary search for the array of 15 integer elements.               */
+/*                                                                       */
+/*  REMARK :                                                             */
+/*                                                                       */
+/*  EXECUTION TIME :                                                     */
+/*                                                                       */
+/*                                                                       */
+/*************************************************************************/
+
+let
+
+
+type DATA = {key: int, value: int}
+type arrayDATA = array of DATA
+
+var data := arrayDATA[15] of nil
+
+function binary_search(x:int): int =
+  let
+  
+    var fvalue := 0
+    var mid := 0
+    var up := 0
+    var low := 14
+
+  in
+    fvalue := -1 /* all data are positive */ ;
+    while (low <= up) do 
+    (
+       mid := (low + up) / 2;
+       if ( data[mid].key = x ) then
+       (  /*  found  */
+          up := low - 1;
+          fvalue := data[mid].value
+       )
+       else  /* not found */
+          if ( data[mid].key > x ) then
+	     up := mid - 1
+          else
+	     low := mid + 1
+    );
+    fvalue
+  end
+
+function printint(i: int) =
+  let function f(i:int) = if i>0 
+             then (f(i/10); print(chr(i-i/10*10+ord("0"))))
+   in if i<0 then (print("-"); f(-i))
+      else if i>0 then f(i)
+      else print("0")
+  end
+
+in
+
+
+ data[0] := DATA{key=1, value=100};
+ data[1] := DATA{key=5, value=200};
+ data[2] := DATA{key=6, value=300};
+ data[3] := DATA{key=7, value=700};
+ data[4] := DATA{key=8, value=900};
+ data[5] := DATA{key=9, value=250};
+ data[6] := DATA{key=10, value=400};
+ data[7] := DATA{key=11, value=600};
+ data[8] := DATA{key=12, value=800};
+ data[9] := DATA{key=13, value=1500};
+ data[10] := DATA{key=14, value=1200};
+ data[11] := DATA{key=15, value=110};
+ data[12] := DATA{key=16, value=140};
+ data[13] := DATA{key=17, value=133};
+ data[14] := DATA{key=18, value=10};
+
+ print("Binary search: ");printint(binary_search(8))
+
+end

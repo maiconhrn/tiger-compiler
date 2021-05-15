@@ -1,0 +1,54 @@
+/* buble sort - array with 10 integer */
+
+let
+    type intarr = array of int
+    var arrsize := 10
+	var arr : intarr := intarr [arrsize] of 0
+
+    function printArr(arr : intarr, size : int) =
+		let
+			var i := 0
+		in
+			print("[");
+			do (
+				printd(arr[i]);
+				print(", ");
+				i := i + 1
+			) while i < size;
+			print("\b\b]\n")
+		end
+
+    function bubbleSort(arr : intarr, size : int) =
+        let
+            var aux := 0
+        in
+            for i := 0 to size - 1 do (
+		        for j := 0 to size - i - 1 do (
+                    if (arr[j] > arr[j + 1]) then (
+                        aux := arr[j];
+                        arr[j] := arr[j + 1];
+                        arr[j + 1] := aux
+                    )
+                )
+	        )
+        end
+
+in
+    arr[0] := 50;
+    arr[1] := 20;
+    arr[2] := 47;
+    arr[3] := 21;
+    arr[4] := 55;
+    arr[5] := 4;
+    arr[6] := 13;
+    arr[7] := 37;
+    arr[8] := 11;
+    arr[9] := 25;
+
+    print("Antes de ordenar:\n");
+    printArr(arr, arrsize);
+
+    bubbleSort(arr, arrsize);
+    print("Depois de ordenar com o Bubble Sort:\n");
+    printArr(arr, arrsize);
+end

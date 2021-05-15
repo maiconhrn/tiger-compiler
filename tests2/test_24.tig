@@ -1,0 +1,8 @@
+/* This is legal. */
+let
+	function g(a:int):int = a
+	var a:= 10
+	function g(a:int):int = a
+in
+	0
+end

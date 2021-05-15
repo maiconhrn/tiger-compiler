@@ -1,0 +1,27 @@
+/* print the floor of square root of x */
+
+let
+    var x := 25
+    function floorSqrt(x : int) : int =
+        let
+            var i := 1
+            var result := 1
+        in
+            if x = 0 | x = 1 then
+                x
+            else (
+                while result <= x do (
+                    i := i + 1;
+                    result := i * i
+                );
+
+                i - 1
+            )
+        end
+in
+    print("Floor square root of: ");
+    printd(x);
+    print(" is ");
+    printd(floorSqrt(x));
+    print("\n")
+end

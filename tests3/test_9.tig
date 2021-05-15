@@ -1,0 +1,31 @@
+/* verify if a substring exists, print true if such substring exists otherwise false */
+
+let
+    function contains(str : string, strlen : int, strsource : string, strsourcelen : int) : int =
+        let
+            var m := strlen
+            var n := strsourcelen
+            var jo := 0
+            var contains := 0
+        in
+            for i := 0 to n - m do (
+                for j := 0 to m - 1 do (
+                    jo := j;
+                    if strcmp_(substring(strsource, i + j, i + j + 1), substring(str, j, j + 1)) = 0 then (
+                        contains := 1;
+                        break;
+                    )
+                );
+
+                if contains then
+                    break;
+            );
+
+            contains
+        end
+in
+    if contains("Hello", 5, "Hello, World!!!", 15) then
+        print("true\n")
+    else
+        print("false\n")
+end

@@ -1,0 +1,1112 @@
+/*************************************************************************/
+/*                                                                       */
+/*   SNU-RT Benchmark Suite for Worst Case Timing Analysis               */
+/*   =====================================================               */
+/*                              Collected and Modified by S.-S. Lim      */
+/*                                           sslim@archi.snu.ac.kr       */
+/*                                         Real-Time Research Group      */
+/*                                        Seoul National University      */
+/*                                                                       */
+/*                                                                       */
+/*        < Features > - restrictions for our experimental environment   */
+/*                                                                       */
+/*          1. Completely structured.                                    */
+/*               - There are no unconditional jumps.                     */
+/*               - There are no exit from loop bodies.                   */
+/*                 (There are no 'break' or 'return' in loop bodies)     */
+/*          2. No 'switch' statements.                                   */
+/*          3. No 'do..while' statements.                                */
+/*          4. Expressions are restricted.                               */
+/*               - There are no multiple expressions joined by 'or',     */
+/*                'and' operations.                                      */
+/*          5. No library calls.                                         */
+/*               - All the functions needed are implemented in the       */
+/*                 source file.                                          */
+/*                                                                       */
+/*                                                                       */
+/*************************************************************************/
+/*                                                                       */
+/*  FILE: adpcm.c                                                        */
+/*  SOURCE : C Algorithms for Real-Time DSP by P. M. Embree              */
+/*                                                                       */
+/*  DESCRIPTION :                                                        */
+/*                                                                       */
+/*     CCITT G.722 ADPCM (Adaptive Differential Pulse Code Modulation)   */
+/*     algorithm.                                                        */
+/*     16khz sample rate data is stored in the array test_data[SIZE].    */
+/*     Results are stored in the array compressed[SIZE] and result[SIZE].*/
+/*     Execution time is determined by the constant SIZE (default value  */
+/*     is 2000).                                                         */
+/*                                                                       */
+/*  REMARK :                                                             */
+/*                                                                       */
+/*  EXECUTION TIME :                                                     */
+/*                                                                       */
+/*                                                                       */
+/*************************************************************************/
+
+
+let
+
+ /* COMPLEX STRUCTURE */
+ type COMPLEX =  {real : int, imag : int}
+
+ type intARRAY = array of int
+
+ /* common sampling rate for sound cards on IBM/PC */
+ var SAMPLE_RATE := 11025
+
+ var PI := 3
+
+ var SIZE := 2000
+ var IN_END := 2000
+
+ var test_data := intARRAY[SIZE] of 0
+ var compressed := intARRAY[SIZE] of 0
+ var result := intARRAY[SIZE] of 0
+
+ /* G722 C code */
+
+ /* variables for transimit quadrature mirror filter here */
+ var tqmf := intARRAY[24] of 0
+
+ /* QMF filter coefficients:
+ scaled by a factor of 4 compared to G722 CCITT recomendation */
+
+ var h := intARRAY[24] of 0
+
+ var xl := 0
+ var xh := 0
+
+ /* variables for receive quadrature mirror filter here */
+ var accumc := intARRAY[11] of 0
+ var accumd := intARRAY[11] of 0
+
+ /* outputs of decode() */
+ var xout1 := 0
+ var xout2 := 0
+
+ var xs := 0
+ var xd := 0
+
+ /* variables for encoder (hi and lo) here */
+
+ var il := 0
+ var szl := 0
+ var spl := 0
+ var sl := 0
+ var el := 0
+
+ var qq4_code4_table := intARRAY[16] of 0
+
+ var qq5_code5_table := intARRAY[32] of 0
+ 
+ var qq6_code6_table := intARRAY[64] of 0
+
+
+ var delay_bpl := intARRAY[6] of 0
+
+ var delay_dltx := intARRAY[6] of 0
+
+ var wl_code_table := intARRAY[16] of 0
+
+ var wl_table := intARRAY[8] of 0
+
+ var ilb_table := intARRAY[32] of 0
+
+ var nbl := 0                  /* delay line */
+ var al1 := 0
+ var al2 := 0
+ var plt := 0
+ var plt1 := 0
+ var plt2 := 0
+ var rs := 0
+ var dlt := 0
+ var rlt := 0
+ var rlt1 := 0
+ var rlt2 := 0
+
+/* decision levels - pre-multiplied by 8, 0 to indicate end */
+ var decis_levl := intARRAY[30] of 0 
+
+ var detl := 32
+
+/* quantization table 31 long to make quantl look-up easier,
+last entry is for mil=30 case when wd is max */
+ var quant26bt_pos := intARRAY[31] of 0
+
+
+/* quantization table 31 long to make quantl look-up easier,
+last entry is for mil=30 case when wd is max */
+ var quant26bt_neg := intARRAY[31] of 0
+
+ var deth := 8
+ var sh := 0         /* this comes from adaptive predictor */
+ var eh := 0
+
+ var qq2_code2_table := intARRAY[4] of 0
+
+ var wh_code_table := intARRAY[4] of 0
+
+ var dh := 0
+ var ih := 0
+ var nbh := 0
+ var szh := 0
+ var sph := 0
+ var ph := 0
+ var yh := 0
+ var rh := 0 
+
+ var delay_dhx := intARRAY[6] of 0
+
+ var delay_bph := intARRAY[6] of 0
+
+ var ah1 := 0
+ var ah2 := 0
+ var ph1 := 0
+ var ph2 := 0
+ var rh1 := 0
+ var rh2 := 0
+
+ /* variables for decoder here */
+ var ilr := 0
+ var yl := 0
+ var rl := 0
+
+ var dec_deth := 8
+ var dec_detl := 32
+ var dec_dlt := 0
+
+ var dec_del_bpl := intARRAY[6] of 0
+
+ var dec_del_dltx := intARRAY[6] of 0
+
+ var dec_plt := 0
+ var dec_plt1 := 0
+ var dec_plt2 := 0
+ var dec_szl := 0
+ var dec_spl := 0
+ var dec_sl := 0
+ var dec_rlt1 := 0
+ var dec_rlt2 := 0
+ var dec_rlt := 0
+ var dec_al1 := 0
+ var dec_al2 := 0
+ var dl := 0
+ var dec_nbl := 0
+ var dec_yh := 0
+ var dec_dh := 0
+ var dec_nbh := 0
+
+ /* variables used in filtez */
+ var dec_del_bph := intARRAY[6] of 0
+
+ var dec_del_dhx := intARRAY[6] of 0
+
+ var dec_szh := 0
+
+ /* variables used in filtep */
+ var dec_rh1 := 0
+ var dec_rh2 := 0
+ var dec_ah1 := 0
+ var dec_ah2 := 0
+ var dec_ph := 0
+ var dec_sph := 0
+
+ var dec_sh := 0
+ var dec_rh := 0
+
+ var dec_ph1 := 0
+ var dec_ph2 := 0
+
+
+/* G722 encode function two ints in, one 8 bit output */
+
+/* put input samples in xin1 = first value, xin2 = second value */
+/* returns il and ih stored together */
+
+ function abs(n:int):int = 
+   if (n >= 0) then n else -n
+
+ function fabs(n:int):int =
+   if (n >= 0) then n else -n
+
+ function rad():int =
+ let
+  var app := 0
+  var rad := 0
+  var diff := 0
+  var inc := 1
+
+ in
+  while (rad > 2*PI) do
+	rad := rad - 2*PI;
+  while (rad < -2*PI) do
+    rad := rad + 2*PI;
+  app := rad;
+  diff := rad;
+  diff := (diff * (-(rad*rad))) / ((2 * inc) * (2 * inc + 1));
+  app := app + diff;
+  inc := inc + 1;
+  while(fabs(diff) >= 1) do (
+    diff := (diff * (-(rad*rad))) / ((2 * inc) * (2 * inc + 1));
+    app := app + diff;
+    inc := inc + 1
+  );
+  app
+ end
+
+ function cos(rad:int):int =
+  sin(PI / 2 - rad)
+
+ function encode(xin1:int, xin2:int):int =
+ let
+    var h_ptr := 0
+    var tqmf_ptr := 0
+    var tqmf_ptr1 := 0
+    var xa := 0
+    var xb := 0
+    var decis := 0
+ in
+    /* transmit quadrature mirror filters implemented here */
+    xa := tqmf[tqmf_ptr] * h[h_ptr];
+    tqmf_ptr := tqmf_ptr + 1;
+    h_ptr := h_ptr + 1;
+    xb := tqmf[tqmf_ptr] * h[h_ptr];
+    tqmf_ptr := tqmf_ptr + 1;
+    h_ptr := h_ptr + 1;
+
+    /* main multiply accumulate loop for samples and coefficients */
+    for i := 0 to 9 do (
+      xa := xa + tqmf[tqmf_ptr] * h[h_ptr];
+      tqmf_ptr := tqmf_ptr + 1;
+      h_ptr := h_ptr + 1;
+      xb := xb + tqmf[tqmf_ptr] * h[h_ptr];
+      tqmf_ptr := tqmf_ptr + 1;
+      h_ptr := h_ptr + 1
+    );
+
+    /* final mult/accumulate */
+     xa := xa + tqmf[tqmf_ptr] * h[h_ptr];
+     tqmf_ptr := tqmf_ptr + 1;
+     h_ptr := h_ptr + 1;
+     xb := xb + tqmf[tqmf_ptr] * h[h_ptr];
+     tqmf_ptr := tqmf_ptr + 1;
+     h_ptr := h_ptr + 1;
+
+    /* update delay line tqmf */
+    tqmf_ptr1 := tqmf_ptr - 2;
+    for i := 0 to 21 do (
+	tqmf[tqmf_ptr] := tqmf[tqmf_ptr1];
+	tqmf_ptr := tqmf_ptr - 1;
+	tqmf_ptr1 := tqmf_ptr1 - 1
+    );
+
+    tqmf[tqmf_ptr] := xin1;
+    tqmf_ptr := tqmf_ptr - 1;
+    tqmf[tqmf_ptr] := xin2;
+
+    /* scale outputs */
+    xl := (xa + xb) >> 15;
+    xh := (xa - xb) >> 15;
+
+    /* end of quadrature mirror filter code */
+
+    /* starting with lower sub band encoder */
+
+    /* filtez - compute predictor output section - zero section */
+    szl := filtez(delay_bpl,delay_dltx);
+
+    /* filtep - compute predictor output signal (pole section) */
+    spl := filtep(rlt1,al1,rlt2,al2);
+
+    /* compute the predictor output value in the lower sub_band encoder */
+    sl := szl + spl;
+    el := xl - sl;
+
+    /* quantl: quantize the difference signal */
+    il := quantl(el,detl);
+
+    /* invqxl: computes quantized difference signal */
+    /* for invqbl, truncate by 2 lsbs, so mode = 3 */
+    dlt := (detl*qq4_code4_table[il >> 2]) >> 15;
+
+    /* logscl: updates logarithmic quant. scale factor in low sub band */
+    nbl := logscl(il,nbl);
+
+    /* scalel: compute the quantizer scale factor in the lower sub band */
+    /* calling parameters nbl and 8 (constant such that scalel can be scaleh) */
+    detl := scalel(nbl,8);
+
+    /* parrec - simple addition to compute recontructed signal for adaptive pred */
+    plt := dlt + szl;
+
+    /* upzero: update zero section predictor coefficients (sixth order)*/
+    /* calling parameters: dlt, dlt1, dlt2, ..., dlt6 from dlt */
+    /*  bpli (linear_buffer in which all six values are delayed */
+    /* return params:      updated bpli, delayed dltx */
+    upzero(dlt,delay_dltx,delay_bpl);
+
+    /* uppol2- update second predictor coefficient apl2 and delay it as al2 */
+    /* calling parameters: al1, al2, plt, plt1, plt2 */
+    al2 := uppol2(al1,al2,plt,plt1,plt2);
+
+    /* uppol1 :update first predictor coefficient apl1 and delay it as al1 */
+    /* calling parameters: al1, apl2, plt, plt1 */
+    al1 := uppol1(al1,al2,plt,plt1);
+
+    /* recons : compute recontructed signal for adaptive predictor */
+    rlt := sl + dlt;
+
+    /* done with lower sub_band encoder; now implement delays for next time*/
+    rlt2 := rlt1;
+    rlt1 := rlt;
+    plt2 := plt1;
+    plt1 := plt;
+
+    /* high band encode */
+
+    szh := filtez(delay_bph,delay_dhx);
+
+    sph := filtep(rh1,ah1,rh2,ah2);
+
+    /* predic: sh = sph + szh */
+    sh := sph + szh;
+    /* subtra: eh = xh - sh */
+    eh := xh - sh;
+
+    /* quanth - quantization of difference signal for higher sub-band */
+    /* quanth: in-place for speed params: eh, deth (has init. value) */
+    if (eh >= 0) then
+        ih := 3     /* 2,3 are pos codes */
+    else
+        ih := 1;     /* 0,1 are neg codes */
+
+    decis := (564*deth) >> 12;
+    if(abs(eh) > decis) then ih := ih - 1;     /* mih = 2 case */
+
+    /* invqah: compute the quantized difference signal, higher sub-band*/
+    dh := (deth*qq2_code2_table[ih]) >> 15;
+
+    /* logsch: update logarithmic quantizer scale factor in hi sub-band*/
+    nbh := logsch(ih,nbh);
+
+    /* note : scalel and scaleh use same code, different parameters */
+    deth := scalel(nbh,10);
+
+    /* parrec - add pole predictor output to quantized diff. signal */
+    ph := dh + szh;
+
+    /* upzero: update zero section predictor coefficients (sixth order) */
+    /* calling parameters: dh, dhi, bphi */
+    /* return params: updated bphi, delayed dhx */
+    upzero(dh,delay_dhx,delay_bph);
+
+    /* uppol2: update second predictor coef aph2 and delay as ah2 */
+    /* calling params: ah1, ah2, ph, ph1, ph2 */
+    ah2 := uppol2(ah1,ah2,ph,ph1,ph2);
+
+    /* uppol1:  update first predictor coef. aph2 and delay it as ah1 */
+    ah1 := uppol1(ah1,ah2,ph,ph1);
+
+    /* recons for higher sub-band */
+    yh := sh + dh;
+
+    /* done with higher sub-band encoder, now Delay for next time */
+    rh2 := rh1;
+    rh1 := yh;
+    ph2 := ph1;
+    ph1 := ph;
+
+    /* multiplex ih and il to get signals together */
+    /*return(il | (ih << 6));*/
+    ih << 6
+ end
+
+/* decode function, result in xout1 and xout2 */
+
+ function decode(input:int) =
+ let
+   
+    var i := 0
+    var xa1 := 0
+    var xa2 := 0    /* qmf accumulators */
+    var h_ptr := 0
+    var ac_ptr := 0
+    var ac_ptr1 := 0
+    var ad_ptr := 0
+    var ad_ptr1 := 0
+
+ in
+
+    /* split transmitted word from input into ilr and ih */
+    ilr := input; /* & 0x3f; */
+    ih := input >> 6;
+
+    /* LOWER SUB_BAND DECODER */
+
+    /* filtez: compute predictor output for zero section */
+    dec_szl := filtez(dec_del_bpl,dec_del_dltx);
+
+    /* filtep: compute predictor output signal for pole section */
+    dec_spl := filtep(dec_rlt1,dec_al1,dec_rlt2,dec_al2);
+
+    dec_sl := dec_spl + dec_szl;
+
+    /* invqxl: compute quantized difference signal for adaptive predic */
+    dec_dlt := (dec_detl*qq4_code4_table[ilr >> 2]) >> 15;
+
+    /* invqxl: compute quantized difference signal for decoder output */
+    dl := (dec_detl*qq6_code6_table[il]) >> 15;
+
+    rl := dl + dec_sl;
+
+    /* logscl: quantizer scale factor adaptation in the lower sub-band */
+    dec_nbl := logscl(ilr,dec_nbl);
+
+    /* scalel: computes quantizer scale factor in the lower sub band */
+    dec_detl := scalel(dec_nbl,8);
+
+    /* parrec - add pole predictor output to quantized diff. signal */
+    /* for partially reconstructed signal */
+    dec_plt := dec_dlt + dec_szl;
+
+    /* upzero: update zero section predictor coefficients */
+    upzero(dec_dlt,dec_del_dltx,dec_del_bpl);
+
+    /* uppol2: update second predictor coefficient apl2 and delay it as al2 */
+    dec_al2 := uppol2(dec_al1,dec_al2,dec_plt,dec_plt1,dec_plt2);
+
+    /* uppol1: update first predictor coef. (pole setion) */
+    dec_al1 := uppol1(dec_al1,dec_al2,dec_plt,dec_plt1);
+
+    /* recons : compute recontructed signal for adaptive predictor */
+    dec_rlt := dec_sl + dec_dlt;
+
+    /* done with lower sub band decoder, implement delays for next time */
+    dec_rlt2 := dec_rlt1;
+    dec_rlt1 := dec_rlt;
+    dec_plt2 := dec_plt1;
+    dec_plt1 := dec_plt;
+
+    /* HIGH SUB-BAND DECODER */
+
+    /* filtez: compute predictor output for zero section */
+    dec_szh := filtez(dec_del_bph,dec_del_dhx);
+
+    /* filtep: compute predictor output signal for pole section */
+    dec_sph := filtep(dec_rh1,dec_ah1,dec_rh2,dec_ah2);
+
+    /* predic:compute the predictor output value in the higher sub_band decoder */
+    dec_sh := dec_sph + dec_szh;
+
+    /* invqah: in-place compute the quantized difference signal */
+    dec_dh := (dec_deth*qq2_code2_table[ih]) >> 15 ;
+
+    /* logsch: update logarithmic quantizer scale factor in hi sub band */
+    dec_nbh := logsch(ih,dec_nbh);
+
+    /* scalel: compute the quantizer scale factor in the higher sub band */
+    dec_deth := scalel(dec_nbh,10);
+
+    /* parrec: compute partially recontructed signal */
+    dec_ph := dec_dh + dec_szh;
+
+    /* upzero: update zero section predictor coefficients */
+    upzero(dec_dh,dec_del_dhx,dec_del_bph);
+
+    /* uppol2: update second predictor coefficient aph2 and delay it as ah2 */
+    dec_ah2 := uppol2(dec_ah1,dec_ah2,dec_ph,dec_ph1,dec_ph2);
+
+    /* uppol1: update first predictor coef. (pole setion) */
+    dec_ah1 := uppol1(dec_ah1,dec_ah2,dec_ph,dec_ph1);
+
+    /* recons : compute recontructed signal for adaptive predictor */
+    rh := dec_sh + dec_dh;
+
+    /* done with high band decode, implementing delays for next time here */
+    dec_rh2 := dec_rh1;
+    dec_rh1 := rh;
+    dec_ph2 := dec_ph1;
+    dec_ph1 := dec_ph;
+
+    /* end of higher sub_band decoder */
+
+    /* end with receive quadrature mirror filters */   
+    xd := rl - rh;
+    xs := rl + rh;
+
+    /* receive quadrature mirror filters implemented here */
+    xa1 := xd * h[h_ptr];
+    h_ptr := h_ptr + 1;
+    xa2 := xs * h[h_ptr];
+    h_ptr := h_ptr + 1;
+
+    /* main multiply accumulate loop for samples and coefficients */
+    for i := 0 to 9 do (
+        xa1 := xa1 + accumc[ac_ptr] * h[h_ptr];
+	ac_ptr := ac_ptr + 1;
+	h_ptr := h_ptr + 1;
+        xa2 := xa2 + accumd[ad_ptr] * h[h_ptr];
+	ad_ptr := ad_ptr + 1;
+	h_ptr := h_ptr + 1
+    );
+
+    /* final mult/accumulate */
+    xa1 := xa1 + accumc[ac_ptr] * h[h_ptr];
+    ac_ptr := ac_ptr + 1;
+    h_ptr := h_ptr + 1;
+    xa2 := xa2 + accumd[ad_ptr] * h[h_ptr];
+    ad_ptr := ad_ptr + 1;
+    h_ptr := h_ptr + 1;
+
+    /* scale by 2^14 */
+    xout1 := xa1 >> 14;
+    xout2 := xa2 >> 14;
+
+    /* update delay lines */
+    ac_ptr1 := ac_ptr - 1;
+    ad_ptr1 := ad_ptr - 1;
+
+    for i := 0 to i < 9 do (
+	accumc[ac_ptr] := accumc[ac_ptr1];
+	ac_ptr := ac_ptr - 1;
+	ac_ptr1 := ac_ptr1 - 1;
+	accumd[ad_ptr] := accumd[ad_ptr1];
+	ad_ptr := ad_ptr - 1;
+	ad_ptr1 := ad_ptr1 - 1
+    );
+
+    accumc[ac_ptr] := xd;
+    accumd[ad_ptr] := xs
+
+end
+
+/* clear all storage locations */
+
+ function reset() =
+ (
+   h[0] := 12;
+   h[1] := -44; 
+   h[2] := -44;
+   h[3] := 212;
+   h[4] := 48;
+   h[5] := -624;
+   h[6] := 128;
+   h[7] := 1448;
+   h[8] := -840;
+   h[9] := -3220;
+   h[10] := 3804;
+   h[11] := 15504;
+   h[12] := 15504;
+   h[13] := 3804;
+   h[14] := -3220;
+   h[15] := -840;
+   h[16] := 1448;
+   h[17] := 128;
+   h[18] := -624;
+   h[19] := 48;
+   h[20] := 212;
+   h[21] := -44;
+   h[22] := -44;
+   h[23] := 12;
+
+   qq4_code4_table[0] := 0;
+   qq4_code4_table[1] := -20456;
+   qq4_code4_table[2] := -12896;
+   qq4_code4_table[3] := -8968;
+   qq4_code4_table[4] := -6288;
+   qq4_code4_table[5] := -4240;
+   qq4_code4_table[6] := -2584;
+   qq4_code4_table[7] := -1200;
+   qq4_code4_table[8] := 20456;
+   qq4_code4_table[9] := 12896;
+   qq4_code4_table[10] := 8968;
+   qq4_code4_table[11] := 6288;
+   qq4_code4_table[12] := 4240;
+   qq4_code4_table[13] := 2584;
+   qq4_code4_table[14] := 1200;
+   qq4_code4_table[15] := 0;
+
+   qq5_code5_table[0] = -280;
+   qq5_code5_table[1] = -280;
+   qq5_code5_table[2] = -23352;
+   qq5_code5_table[3] = -17560;
+   qq5_code5_table[4] = -14120;
+   qq5_code5_table[5] = -11664;
+   qq5_code5_table[6] = -9752;
+   qq5_code5_table[7] = -8184;
+   qq5_code5_table[8] = -6864;
+   qq5_code5_table[9] = -5712;
+   qq5_code5_table[10] = -4696;
+   qq5_code5_table[11] = -3784;
+   qq5_code5_table[12] = -2960;
+   qq5_code5_table[13] = -2208;
+   qq5_code5_table[14] = -1520;
+   qq5_code5_table[15] = -880;
+   qq5_code5_table[16] = 23352;
+   qq5_code5_table[17] = 17560;
+   qq5_code5_table[18] = 14120;
+   qq5_code5_table[19] = 11664;
+   qq5_code5_table[20] = 9752;
+   qq5_code5_table[21] = 8184;
+   qq5_code5_table[22] = 6864;
+   qq5_code5_table[23] = 5712;
+   qq5_code5_table[24] = 4696;
+   qq5_code5_table[25] = 3784;
+   qq5_code5_table[26] = 2960;
+   qq5_code5_table[27] = 2208;
+   qq5_code5_table[28] = 1520;
+   qq5_code5_table[29] = 880;
+   qq5_code5_table[30] = 280;
+   qq5_code5_table[31] = -280;
+
+  qq6_code6_table[0] := -136;
+  qq6_code6_table[1] := -136;
+  qq6_code6_table[2] := -136;
+  qq6_code6_table[3] := -136;
+  qq6_code6_table[4] := -24808;
+  qq6_code6_table[5] := -21904;
+  qq6_code6_table[6] := -19008;
+  qq6_code6_table[7] := -16704;
+  qq6_code6_table[8] := -14984;
+  qq6_code6_table[9] := -13512;
+  qq6_code6_table[10] := -12280;
+  qq6_code6_table[11] := -11192;
+  qq6_code6_table[12] := -10232;
+  qq6_code6_table[13] := -9360;
+  qq6_code6_table[14] := -8576;
+  qq6_code6_table[15] := -7856;
+  qq6_code6_table[16] := -7192;
+  qq6_code6_table[17] := -6576;
+  qq6_code6_table[18] := -6000;
+  qq6_code6_table[19] := -5456;
+  qq6_code6_table[20] := -4944;
+  qq6_code6_table[21] := -4464;
+  qq6_code6_table[22] := -4008;
+  qq6_code6_table[23] := -3576;
+  qq6_code6_table[24] := -3168;
+  qq6_code6_table[25] := -2776;
+  qq6_code6_table[26] := -2400;
+  qq6_code6_table[27] := -2032;
+  qq6_code6_table[28] := -1688;
+  qq6_code6_table[29] := -1360;
+  qq6_code6_table[30] := -1040;
+  qq6_code6_table[31] := -728;
+  qq6_code6_table[32] := 24808;
+  qq6_code6_table[33] := 21904;
+  qq6_code6_table[34] := 19008;
+  qq6_code6_table[35] := 16704;
+  qq6_code6_table[36] := 14984;
+  qq6_code6_table[37] := 13512;
+  qq6_code6_table[38] := 12280;
+  qq6_code6_table[39] := 11192;
+  qq6_code6_table[40] := 10232;
+  qq6_code6_table[41] := 9360;
+  qq6_code6_table[42] := 8576;
+  qq6_code6_table[43] := 7856;
+  qq6_code6_table[44] := 7192;
+  qq6_code6_table[45] := 6576;
+  qq6_code6_table[46] := 6000;
+  qq6_code6_table[47] := 5456;
+  qq6_code6_table[48] := 4944;
+  qq6_code6_table[49] := 4464;
+  qq6_code6_table[50] := 4008;
+  qq6_code6_table[51] := 3576;
+  qq6_code6_table[52] := 3168;
+  qq6_code6_table[53] := 2776;
+  qq6_code6_table[54] := 2400;
+  qq6_code6_table[55] := 2032;
+  qq6_code6_table[56] := 1688;
+  qq6_code6_table[57] := 1360;
+  qq6_code6_table[58] := 1040;
+  qq6_code6_table[59] := 728;
+  qq6_code6_table[60] := 432;
+  qq6_code6_table[61] := 136;
+  qq6_code6_table[62] := -432;
+  qq6_code6_table[63] := -136;
+
+  wl_code_table[0] := -60;
+  wl_code_table[1] := 3042;
+  wl_code_table[2] := 1198;
+  wl_code_table[3] := 538;
+  wl_code_table[4] := 334;
+  wl_code_table[5] := 172;
+  wl_code_table[6] := 58; 
+  wl_code_table[7] := -30;
+  wl_code_table[8] := 3042;
+  wl_code_table[9] := 1198;
+  wl_code_table[10] := 538;
+  wl_code_table[11] := 334;
+  wl_code_table[12] := 172;
+  wl_code_table[13] := 58;
+  wl_code_table[14] := -30;
+  wl_code_table[15] := -60;
+
+  wl_table[0] := -60;
+  wl_table[1] := -30;
+  wl_table[2] := 58;
+  wl_table[3] := 172;
+  wl_table[4] := 334;
+  wl_table[5] := 538;
+  wl_table[6] := 1198;
+  wl_table[7] := 3042;
+
+  ilb_table[0] := 2048;
+  ilb_table[1] := 2093;
+  ilb_table[2] := 2139;
+  ilb_table[3] := 2186;
+  ilb_table[4] := 2233;
+  ilb_table[5] := 2282;
+  ilb_table[6] := 2332;
+  ilb_table[7] := 2383;
+  ilb_table[8] := 2435;
+  ilb_table[9] := 2489;
+  ilb_table[10] := 2543;
+  ilb_table[11] := 2599;
+  ilb_table[12] := 2656;
+  ilb_table[13] := 2714;
+  ilb_table[14] := 2774;
+  ilb_table[15] := 2834;
+  ilb_table[16] := 2896;
+  ilb_table[17] := 2960;
+  ilb_table[18] := 3025;
+  ilb_table[19] := 3091;
+  ilb_table[20] := 3158;
+  ilb_table[21] := 3228;
+  ilb_table[22] := 3298;
+  ilb_table[23] := 3371;
+  ilb_table[24] := 3444;
+  ilb_table[25] := 3520;
+  ilb_table[26] := 3597;
+  ilb_table[27] := 3676;
+  ilb_table[28] := 3756;
+  ilb_table[29] := 3838;
+  ilb_table[30] := 3922;
+  ilb_table[31] := 4008;
+
+  decis_levl[0] := 280;
+  decis_levl[1] := 576;
+  decis_levl[2] := 880;
+  decis_levl[3] := 1200;
+  decis_levl[4] := 1520;
+  decis_levl[5] := 1864;
+  decis_levl[6] := 2208;
+  decis_levl[7] := 2584;
+  decis_levl[8] := 2960;
+  decis_levl[9] := 3376;
+  decis_levl[10] := 3784;
+  decis_levl[11] := 4240;
+  decis_levl[12] := 4696;
+  decis_levl[13] := 5200;
+  decis_levl[14] := 5712;
+  decis_levl[15] := 6288;
+  decis_levl[16] := 6864;
+  decis_levl[17] := 7520;
+  decis_levl[18] := 8184;
+  decis_levl[19] := 8968;
+  decis_levl[20] := 9752;
+  decis_levl[21] := 10712;
+  decis_levl[22] := 11664;
+  decis_levl[23] := 12896;
+  decis_levl[24] := 14120;
+  decis_levl[25] := 15840;
+  decis_levl[26] := 17560;
+  decis_levl[27] := 20456;
+  decis_levl[28] := 23352;
+  decis_levl[29] := 32767;
+
+  quant26bt_pos[0] := 61;
+  quant26bt_pos[1] := 60;
+  quant26bt_pos[2] := 59;
+  quant26bt_pos[3] := 58;
+  quant26bt_pos[4] := 57;
+  quant26bt_pos[5] := 56;
+  quant26bt_pos[6] := 55;
+  quant26bt_pos[7] := 54;
+  quant26bt_pos[8] := 53;
+  quant26bt_pos[9] := 52;
+  quant26bt_pos[10] := 51;
+  quant26bt_pos[11] := 50;
+  quant26bt_pos[12] := 49;
+  quant26bt_pos[13] := 48;
+  quant26bt_pos[14] := 47;
+  quant26bt_pos[15] := 46;
+  quant26bt_pos[16] := 45;
+  quant26bt_pos[17] := 44;
+  quant26bt_pos[18] := 43;
+  quant26bt_pos[19] := 42;
+  quant26bt_pos[20] := 41;
+  quant26bt_pos[21] := 40;
+  quant26bt_pos[22] := 39;
+  quant26bt_pos[23] := 38;
+  quant26bt_pos[24] := 37;
+  quant26bt_pos[25] := 36;
+  quant26bt_pos[26] := 35;
+  quant26bt_pos[27] := 34;
+  quant26bt_pos[28] := 33;
+  quant26bt_pos[29] := 32;
+  quant26bt_pos[30] := 32;
+
+  quant26bt_neg[0] := 63;
+  quant26bt_neg[1] := 62;
+  quant26bt_neg[2] := 31;
+  quant26bt_neg[3] := 30;
+  quant26bt_neg[4] := 29;
+  quant26bt_neg[5] := 28;
+  quant26bt_neg[6] := 27;
+  quant26bt_neg[7] := 26;
+  quant26bt_neg[8] := 25;
+  quant26bt_neg[9] := 24;
+  quant26bt_neg[10] := 23;
+  quant26bt_neg[11] := 22;
+  quant26bt_neg[12] := 21;
+  quant26bt_neg[13] := 20;
+  quant26bt_neg[14] := 19;
+  quant26bt_neg[15] := 18;
+  quant26bt_neg[16] := 17;
+  quant26bt_neg[17] := 16;
+  quant26bt_neg[18] := 15;
+  quant26bt_neg[19] := 14;
+  quant26bt_neg[20] := 13;
+  quant26bt_neg[21] := 12;
+  quant26bt_neg[22] := 11;
+  quant26bt_neg[23] := 10;
+  quant26bt_neg[24] := 9;
+  quant26bt_neg[25] := 8;
+  quant26bt_neg[26] := 7;
+  quant26bt_neg[27] := 6;
+  quant26bt_neg[28] := 5;
+  quant26bt_neg[29] := 4;
+  quant26bt_neg[30] := 4;
+
+  qq2_code2_table[0] := -7408;
+  qq2_code2_table[1] := -1616;
+  qq2_code2_table[2] := 7408;
+  qq2_code2_table[3] := 1616;
+
+  wh_code_table[0] := 798;
+  wh_code_table[1] := -214;
+  wh_code_table[2] := 798;
+  wh_code_table[3] := -214
+
+ )
+
+ /* filtez - compute predictor output signal (zero section) */
+ /* input: bpl1-6 and dlt1-6, output: szl */
+
+ function filtez(bpl:intARRAY, dlt:intARRAY):int =
+ let
+    var zl := 0
+ in
+    zl := bpl[0] * dlt[0];
+    for i := 1 to 5 do
+        zl := zl + bpl[i] * dlt[i];
+
+    (zl >> 14)   /* x2 here */
+ end
+
+ /* filtep - compute predictor output signal (pole section) */
+ /* input rlt1-2 and al1-2, output spl */
+
+ function filtep(rlt1:int, al1:int, rlt2:int, al2:int):int = 
+ let
+    var pl := 0
+    var pl2 := 0
+ in
+    pl := 2*rlt1;
+    pl := al1*pl;
+    pl2 := 2*rlt2;
+    pl := pl + al2 * pl2;
+    (pl >> 15)
+ end
+
+ /* quantl - quantize the difference signal in the lower sub-band */
+ function quantl(el:int, detl:int):int = 
+ let
+    var ril := 0
+    var wd := 0
+    var decis := 0
+    var mil2 := 0
+ in
+     /* abs of difference signal */
+    wd := abs(el);
+    /* determine mil based on decision levels and detl gain */
+    for mil := 0 to 29 do (
+    	mil2 := mil;
+        decis := (decis_levl[mil]*detl) >> 15;
+        if(wd <= decis) then break
+    );
+    /* if mil=30 then wd is less than all decision levels */
+    if(el >= 0) then ril := quant26bt_pos[mil2]
+    else ril := quant26bt_neg[mil2];
+    ril
+ end
+
+ /* logscl - update log quantizer scale factor in lower sub-band */
+ /* note that nbl is passed and returned */
+ function logscl(il:int, nbl:int):int = 
+ let
+    var wd := 0
+ in
+    wd := (nbl * 127) >> 7;   /* leak factor 127/128 */
+    nbl := wd + wl_code_table[il >> 2];
+    if(nbl < 0) then nbl := 0;
+    if(nbl > 18432) then nbl := 18432;
+    nbl
+ end
+
+ /* scalel: compute quantizer scale factor in lower or upper sub-band*/
+ function scalel(nbl:int, shift_constant:int):int =
+ let
+    var wd1 := 0
+    var wd2 := 0
+    var wd3 := 0
+ in
+    wd1 := (nbl >> 6) /*& 31*/;
+    wd2 := nbl >> 11;
+    wd3 := ilb_table[wd1] >> (shift_constant + 1 - wd2);
+    (wd3 << 3)
+ end
+
+ /* upzero - inputs: dlt, dlti[0-5], bli[0-5], outputs: updated bli[0-5] */
+ /* also implements delay of bli and update of dlti from dlt */
+ function upzero(dlt:int, dlti: intARRAY, bli:intARRAY) = 
+ let
+    var wd2 := 0
+    var wd3 := 0
+ in
+    /*if dlt is zero, then no sum into bli */
+    if(dlt = 0) then 
+      for i := 0 to 5 do
+        bli[i] := (255* bli[i]) >> 8 /* leak factor of 255/256 */
+    else 
+      for i := 0 to 5 do (
+        if(dlt*dlti[i] >= 0) then wd2 := 128 else wd2 = -128;
+        wd3 := (255*bli[i]) >> 8;    /* leak factor of 255/256 */
+        bli[i] := wd2 + wd3
+      );
+
+    /* implement delay line for dlt */
+    dlti[5] := dlti[4];
+    dlti[4] := dlti[3];
+    dlti[3] := dlti[2];
+    dlti[1] := dlti[0];
+    dlti[0] := dlt
+ end
+
+ /* uppol2 - update second predictor coefficient (pole section) */
+ /* inputs: al1, al2, plt, plt1, plt2. outputs: apl2 */
+
+ function uppol2(al1:int, al2:int, plt:int, plt1:int, plt2:int):int = 
+ let
+    var wd2 := 0
+    var wd4 := 0
+    var apl2 := 0
+ in
+    wd2 := 4*al1;
+    if(plt*plt1 >= 0) then wd2 := -wd2;    /* check same sign */
+    wd2 := wd2 >> 7;                  /* gain of 1/128 */
+    if(plt*plt2 >= 0) then
+        wd4 := wd2 + 128             /* same sign case */
+    else
+        wd4 := wd2 - 128;
+    apl2 := wd4 + (127*al2 >> 7);  /* leak factor of 127/128 */
+
+    /* apl2 is limited to +-.75 */
+    if(apl2 > 12288) then apl2 := 12288;
+    if(apl2 < -12288) then apl2 := -12288;
+    apl2
+ end
+
+ /* uppol1 - update first predictor coefficient (pole section) */
+ /* inputs: al1, apl2, plt, plt1. outputs: apl1 */
+
+ function uppol1(al1:int, apl2:int, plt:int, plt1:int):int =
+ let
+    var wd2 := 0
+    var wd3 := 0
+    var apl1 := 0
+ in
+    wd2 := (al1*255) >> 8;   /* leak factor of 255/256 */
+    if(plt*plt1 >= 0) then
+        apl1 := wd2 + 192      /* same sign case */
+    else 
+        apl1 := wd2 - 192;
+
+    /* note: wd3= .9375-.75 is always positive */
+    wd3 := 15360 - apl2;             /* limit value */
+    if(apl1 > wd3) then apl1 := wd3;
+    if(apl1 < -wd3) then apl1 := -wd3;
+    apl1
+ end
+
+ /* INVQAH: inverse adaptive quantizer for the higher sub-band */
+ /* returns dh, code table is pre-multiplied by 8 */
+ function invqah(ih:int, deth:int):int =
+    (deth*qq2_code2_table[ih]) >> 15
+
+ /* logsch - update log quantizer scale factor in higher sub-band */
+ /* note that nbh is passed and returned */
+ function logsch(ih:int, nbh:int):int =
+ let
+    var wd := 0
+ in
+    wd := (nbh * 127) >> 7;       /* leak factor 127/128 */
+    nbh := wd + wh_code_table[ih];
+    if(nbh < 0) then nbh := 0;
+    if(nbh > 22528) then nbh := 22528;
+    nbh
+ end
+function sin(rad:int):int = 
+ let
+  var app  := 0
+  var diff := 0
+  var inc  := 1
+ in
+  while (rad > 2*PI) do
+    rad := rad - 2 * PI;
+  while (rad < -2*PI) do
+    rad = rad + 2 * PI;
+  app := rad;
+  diff := rad;
+  diff := (diff * (-(rad*rad))) / ((2 * inc) * (2 * inc + 1));
+  app := app + diff;
+  inc := inc + 1;
+  while(fabs(diff) >= 1) do (
+    diff := (diff * (-(rad*rad))) / ((2 * inc) * (2 * inc + 1));
+    app  := app + diff;
+    inc  := inc + 1
+  );
+  app
+ end
+function printint(i: int) =
+  let function f(i:int) = if i>0 
+             then (f(i/10); print(chr(i-i/10*10+ord("0"))))
+   in if i<0 then (print("-"); f(-i))
+      else if i>0 then f(i)
+      else print("0")
+  end
+in
+
+    /* reset, initialize required memory */
+    reset();
+
+    /* 16 KHz sample rate */
+    for i := 0 to SIZE-1 do
+        test_data[i] := 10*cos(2000*PI*i/8000);
+
+    for i := 0 to IN_END-1 do /* i += 2 */
+        compressed[i/2] := encode(test_data[i],test_data[i+1]);
+
+    for i := 0 to IN_END-1 do /*i += 2 */ (
+        decode(compressed[i/2]);
+        result[i] := xout1;
+        result[i+1] := xout2
+    );
+
+    print("Xout1: ");
+    printint(xout1);
+    print("Xout2: ");
+    printint(xout2)
+end

@@ -1,0 +1,7 @@
+/* valid break */
+
+let
+	var a:= 0
+in 
+	for i:=0 to 100 do (a:=a+1; printd(i);if i=10 then (print("OPA");break))
+end

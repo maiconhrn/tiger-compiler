@@ -1,0 +1,33 @@
+/* write a program using your new construction, such code must have 30 lines and also print something */
+
+let
+	type myint = int
+	type  arrtype = array of myint
+	var arr1Size := 10
+	var arr1:arrtype := arrtype [arr1Size] of 0
+
+	function printArrValues(arr : arrtype, size : int) =
+		let
+			var i := 10000
+		in
+			print("[");
+			do (
+				if i = 10000 then
+					i := 0;
+				printd(arr[i]);
+				print(", ");
+				i := i + 1
+			) while i < size;
+			print("\b\b]\n")
+		end
+in
+	print("Valores iniciais do array de inteiros: ");
+	printArrValues(arr1, arr1Size);
+	
+	for i := 0 to arr1Size do (
+		arr1[i] := i
+	);
+
+	print("Valores apos iteracao no array de inteiros: ");
+	printArrValues(arr1, arr1Size)
+end

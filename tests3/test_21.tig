@@ -1,0 +1,92 @@
+/*************************************************************************/
+/*                                                                       */
+/*   SNU-RT Benchmark Suite for Worst Case Timing Analysis               */
+/*   =====================================================               */
+/*                              Collected and Modified by S.-S. Lim      */
+/*                                           sslim@archi.snu.ac.kr       */
+/*                                         Real-Time Research Group      */
+/*                                        Seoul National University      */
+/*                                                                       */
+/*                                                                       */
+/*        < Features > - restrictions for our experimental environment   */
+/*                                                                       */
+/*          1. Completely structured.                                    */
+/*               - There are no unconditional jumps.                     */
+/*               - There are no exit from loop bodies.                   */
+/*                 (There are no 'break' or 'return' in loop bodies)     */
+/*          2. No 'switch' statements.                                   */
+/*          3. No 'do..while' statements.                                */
+/*          4. Expressions are restricted.                               */
+/*               - There are no multiple expressions joined by 'or',     */
+/*                'and' operations.                                      */
+/*          5. No library calls.                                         */
+/*               - All the functions needed are implemented in the       */
+/*                 source file.                                          */
+/*                                                                       */
+/*                                                                       */
+/*************************************************************************/
+/*                                                                       */
+/*  FILE: sqrt.c                                                         */
+/*  SOURCE : Public Domain Code                                          */
+/*                                                                       */
+/*  DESCRIPTION :                                                        */
+/*                                                                       */
+/*     Square root function implemented by Taylor series.                */
+/*                                                                       */
+/*  REMARK :                                                             */
+/*                                                                       */
+/*  EXECUTION TIME :                                                     */
+/*                                                                       */
+/*                                                                       */
+/*************************************************************************/
+
+let
+
+function fabs(n:int):int =
+  if (n >= 0) then n else -n
+
+function sqrt(val:int):int =
+let
+
+  var x := val/10
+
+  var dx := 0
+
+  var diff := 0
+  var min_tol := 1
+  var flag := 0
+
+in
+
+  if (val = 0 ) 
+  then 
+     x := 0
+  else 
+    for i:=1 to 19 do
+	if (not(flag)) 
+        then
+        (
+	  dx := (val - (x*x)) / (2 * x);
+	  x := x + dx;
+	  diff := val - (x*x);
+	  if (fabs(diff) <= min_tol) then flag := 1
+	)
+	else 
+	  x := x;
+  x
+
+end
+ function printint(i: int) =
+  let function f(i:int) = if i>0 
+             then (f(i/10); print(chr(i-i/10*10+ord("0"))))
+   in if i<0 then (print("-"); f(-i))
+      else if i>0 then f(i)
+      else print("0")
+  end
+
+
+in
+
+  sqrt(1234)
+
+end

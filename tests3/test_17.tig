@@ -1,0 +1,265 @@
+/*************************************************************************/
+/*                                                                       */
+/*   SNU-RT Benchmark Suite for Worst Case Timing Analysis               */
+/*   =====================================================               */
+/*                              Collected and Modified by S.-S. Lim      */
+/*                                           sslim@archi.snu.ac.kr       */
+/*                                         Real-Time Research Group      */
+/*                                        Seoul National University      */
+/*                                                                       */
+/*                                                                       */
+/*        < Features > - restrictions for our experimental environment   */
+/*                                                                       */
+/*          1. Completely structured.                                    */
+/*               - There are no unconditional jumps.                     */
+/*               - There are no exit from loop bodies.                   */
+/*                 (There are no 'break' or 'return' in loop bodies)     */
+/*          2. No 'switch' statements.                                   */
+/*          3. No 'do..while' statements.                                */
+/*          4. Expressions are restricted.                               */
+/*               - There are no multiple expressions joined by 'or',     */
+/*                'and' operations.                                      */
+/*          5. No library calls.                                         */
+/*               - All the functions needed are implemented in the       */
+/*                 source file.                                          */
+/*                                                                       */
+/*                                                                       */
+/*************************************************************************/
+/*                                                                       */
+/*  FILE: lms.c                                                          */
+/*  SOURCE : C Algorithms for Real-Time DSP by P. M. Embree              */
+/*                                                                       */
+/*  DESCRIPTION :                                                        */
+/*                                                                       */
+/*     An LMS adaptive signal enhancement. The input signal is a sine    */
+/*     wave with added white noise.                                      */
+/*     The detailed description is in the program source code.           */
+/*                                                                       */
+/*  REMARK :                                                             */
+/*                                                                       */
+/*  EXECUTION TIME :                                                     */
+/*                                                                       */
+/*                                                                       */
+/*************************************************************************/
+
+let
+
+ type intARRAY = array of int
+
+ var RAND_MAX := 32768
+ var PI := 3
+
+ var N := 201
+ var L := 20            /* filter order, (length L+1) */
+
+ /* set convergence parameter */
+ var mu := 1
+
+ var signal_amp := 0
+ var noise_amp := 0
+ var arg := 0
+ var d := intARRAY[N] of 0
+ var x := 0
+ var b := intARRAY[21] of 0
+
+ function rand():int =
+ let
+  var next := 1
+ in
+  next := next * 1103515245 + 12345;
+  (next/65536)
+ end
+
+ function log(r:int):int = 4
+
+ function fabs(n:int):int =
+  if (n >= 0) then  n else -n
+
+ function sqrt(val:int):int =
+ let
+
+  var x := val/10
+
+  var dx := 0
+
+  var diff := 0
+  var min_tol := 1
+  var flag := 0
+
+ in
+ if (val = 0 ) 
+  then 
+     x := 0
+  else 
+    for i:=1 to 19 do
+        if (not(flag)) 
+        then
+        (
+          dx := (val - (x*x)) / (2 * x);
+          x := x + dx;
+          diff := val - (x*x);
+          if (fabs(diff) <= min_tol) then flag := 1
+        )
+        else 
+          x := x;
+  x
+
+ end
+
+function sin(rad:int):int = 
+ let
+  var app  := 0
+  var diff := 0
+  var inc  := 1
+ in
+  while (rad > 2*PI) do
+    rad := (rad - 2 * PI);
+  while (rad < -2*PI) do
+    rad := (rad + 2 * PI);
+  app := rad;
+  diff := rad;
+  diff := (diff * (-(rad*rad))) / ((2 * inc) * (2 * inc + 1));
+  app := app + diff;
+  inc := inc + 1;
+  while(fabs(diff) >= 1) do (
+    diff := (diff * (-(rad*rad))) / ((2 * inc) * (2 * inc + 1));
+    app  := app + diff;
+    inc  := inc + 1
+  );
+  app
+ end
+
+
+function gaussian():int = 
+ let
+
+  var ready  := 0       /* flag to indicated stored value */
+  var gstore := 0        /* place to store other value */
+  var rconst1 := (2/RAND_MAX)
+  var rconst2 := (RAND_MAX/2)
+  var v1  := 0
+  var v2  := 0
+  var r   := 0
+  var fac := 0
+  var gaus := 0
+
+ in
+
+ /* make two numbers if none stored */
+  if(ready = 0) then (
+    v1 := rand() - rconst2;
+    v2 := rand() - rconst2;
+    v1 := rconst1;
+    v2 := rconst1;
+    r := v1*v1 + v2*v2;
+    while(r > 1) do (
+      v1 := rand() - rconst2;
+      v2 := rand() - rconst2;
+      v1 := v1 * rconst1;
+      v2 := v2 * rconst1;
+      r := v1*v1 + v2*v2
+    );       /* make radius less than 1 */
+
+    /* remap v1 and v2 to two Gaussian numbers */
+    /*        fac = sqrt(-2.0f*log(r)/r);  */
+    fac := sqrt(-2 * 1);
+    gstore := v1*fac;        /* store one */
+    gaus := v2*fac;          /* return one */
+    ready := 1              /* set ready flag */
+  )
+  else (
+    ready := 0;      /* reset ready flag for next pair */
+    gaus := gstore  /* return the stored one */
+  );
+
+  gaus
+
+ end
+
+
+/*
+  function lms(x,d,b,l,mu,alpha)
+
+  Implements NLMS Algorithm b(k+1)=b(k)+2*mu*e*x(k)/((l+1)*sig)
+
+  x      = input data
+  d      = desired signal
+  b[0:l] = Adaptive coefficients of lth order fir filter
+  l      = order of filter (> 1)
+  mu     = Convergence parameter (0.0 to 1.0)
+  alpha  = Forgetting factor   sig(k)=alpha*(x(k)**2)+(1-alpha)*sig(k-1)
+  (>= 0.0 and < 1.0)
+
+  returns the filter output
+*/
+
+ function lms(x:int, d:int, b:intARRAY, l:int, mu:int, alpha:int):int = 
+ let
+
+  var e := 0
+  var mu_e := 0
+  var lms_const := 0
+  var y := 0
+  var px := intARRAY[51] of 0      /* max L = 50 */
+  var sigma := 2 /* start at 2 and update internally */
+
+ in
+
+  px[0]:=x;
+
+  /* calculate filter output */
+  y:=b[0]*px[0];
+  for ll := 1 to l do
+    y:=y+b[ll]*px[ll];
+
+  /* error signal */
+  e:=d-y;
+
+  /* update sigma */
+  sigma:=alpha*(px[0]*px[0])+(1-alpha)*sigma;
+  mu_e:=mu*e/sigma;
+
+  /* update coefficients */
+  for ll := 0 to l do
+    b[ll]:=b[ll]+mu_e*px[ll];
+
+  /* update history */
+  for ll := l to 1 do
+    px[ll]:=px[ll-1];
+
+  y
+
+ end
+
+ function printint(i: int) =
+  let function f(i:int) = if i>0 
+             then (f(i/10); print(chr(i-i/10*10+ord("0"))))
+   in if i<0 then (print("-"); f(-i))
+      else if i>0 then f(i)
+      else print("0")
+  end
+
+in
+
+  /* create signal plus noise */
+  signal_amp := sqrt(2);
+  noise_amp := 2*sqrt(12);
+  arg := 2*PI/20;
+  for k := 0 to N-1 do
+    d[k] := signal_amp*sin(arg*k) + noise_amp*gaussian();
+  
+
+  /* scale based on L */
+  mu := 2*mu/(L+1);
+
+  x := 0;
+  for k := 0 to N-1 do (
+    lms(x,d[k],b,L,mu,1);
+    /* delay x one sample */
+    x := d[k]
+  );
+
+  printint(x)
+
+end
+

@@ -1,0 +1,368 @@
+/*************************************************************************/
+/*                                                                       */
+/*   SNU-RT Benchmark Suite for Worst Case Timing Analysis               */
+/*   =====================================================               */
+/*                              Collected and Modified by S.-S. Lim      */
+/*                                           sslim@archi.snu.ac.kr       */
+/*                                         Real-Time Research Group      */
+/*                                        Seoul National University      */
+/*                                                                       */
+/*                                                                       */
+/*        < Features > - restrictions for our experimental environment   */
+/*                                                                       */
+/*          1. Completely structured.                                    */
+/*               - There are no unconditional jumps.                     */
+/*               - There are no exit from loop bodies.                   */
+/*                 (There are no 'break' or 'return' in loop bodies)     */
+/*          2. No 'switch' statements.                                   */
+/*          3. No 'do..while' statements.                                */
+/*          4. Expressions are restricted.                               */
+/*               - There are no multiple expressions joined by 'or',     */
+/*                'and' operations.                                      */
+/*          5. No library calls.                                         */
+/*               - All the functions needed are implemented in the       */
+/*                 source file.                                          */
+/*                                                                       */
+/*                                                                       */
+/*************************************************************************/
+/*                                                                       */
+/*  FILE: fir.c                                                          */
+/*  SOURCE : C Algorithms for Real-Time DSP by P. M. Embree              */
+/*                                                                       */
+/*  DESCRIPTION :                                                        */
+/*                                                                       */
+/*     An example using FIR filter and Gaussian function.                */
+/*     algorithm.                                                        */
+/*     The function 'fir_filter' is for FIR filtering and the function   */
+/*     'gaussian' is for Gaussian number generation.                     */
+/*     The detailed description is above each function.                  */
+/*                                                                       */
+/*  REMARK :                                                             */
+/*                                                                       */
+/*  EXECUTION TIME :                                                     */
+/*                                                                       */
+/*                                                                       */
+/*************************************************************************/
+
+
+let
+
+ type intARRAY = array of int
+
+ var SAMPLE_RATE := 11025
+ var RAND_MAX := 32768
+ var PI := 3
+
+ var sigma := 2
+
+ var hist := intARRAY[34] of 0
+
+ var x := 0
+
+/* FILTER COEFFECIENTS FOR FILTER ROUTINES */
+
+/* FILTERS: 2 FIR AND 2 IIR */
+
+/* 35 point lowpass FIR filter cutoff at 0.19
+   designed using the Parks-McClellan program */
+
+ var fir_lpf35 := intARRAY[35] of 0
+
+/* 37 point lowpass FIR filter cutoff at 0.19
+   designed using the KSRFIR.C program */
+
+ var fir_lpf37 := intARRAY[37] of 0
+
+
+/**************************************************************************
+
+fir_filter - Perform fir filtering sample by sample on floats
+
+Requires array of filter coefficients and pointer to history.
+Returns one output sample for each input sample.
+
+float fir_filter(float input,float *coef,int n,float *history)
+
+    float input        new float input sample
+    float *coef        pointer to filter coefficients
+    int n              number of coefficients in filter
+    float *history     history array pointer
+
+Returns float value giving the current output.
+
+*************************************************************************/
+
+ function rand():int =
+ let
+  var next := 1
+ in
+  next := next * 1103515245 + 12345;
+  (next/65536)
+ end
+
+
+ function fabs(n:int):int =
+  if (n >= 0) then  n else -n
+
+function sin(rad:int):int = 
+ let
+  var app  := 0
+  var diff := 0
+  var inc  := 1
+ in
+  while (rad > 2*PI) do
+    rad := rad - 2 * PI;
+  while (rad < -2*PI) do
+    rad = rad + 2 * PI;
+  app := rad;
+  diff := rad;
+  diff := (diff * (-(rad*rad))) / ((2 * inc) * (2 * inc + 1));
+  app := app + diff;
+  inc := inc + 1;
+  while(fabs(diff) >= 1) do (
+    diff := (diff * (-(rad*rad))) / ((2 * inc) * (2 * inc + 1));
+    app  := app + diff;
+    inc  := inc + 1
+  );
+  app
+ end
+
+ function log(r:int):int = 4
+
+ function sqrt(val:int):int =
+ let
+
+  var x := val/10
+
+  var dx := 0
+
+  var diff := 0
+  var min_tol := 1
+  var flag := 0
+
+ in
+  if (val = 0 ) 
+  then 
+     x := 0
+  else 
+    for i:=1 to 19 do
+        if (not(flag)) 
+        then
+        (
+          dx := (val - (x*x)) / (2 * x);
+          x := x + dx;
+          diff := val - (x*x);
+          if (fabs(diff) <= min_tol) then flag := 1
+        )
+        else 
+          x := x;
+  x
+
+ end
+
+
+ function fir_filter(input:int, coef:intARRAY, n:int, history:intARRAY):int =
+ let
+
+  var hist_ptr  := 0
+  var hist1_ptr := 0
+  var coef_ptr  := 0
+  var output    := 0
+
+ in
+
+  hist_ptr := history[0];
+  hist1_ptr := hist_ptr;             /* use for history update */
+  coef_ptr := coef[n - 1];          /* point to last coef */
+
+  /* form output accumulation */
+  output := hist_ptr * (coef_ptr);
+  hist_ptr := hist_ptr + 1;
+  coef_ptr := coef_ptr - 1;
+  for i := 2 to n - 1 do (
+    hist1_ptr := hist_ptr;            /* update history array */
+    hist1_ptr := hist1_ptr + 1;
+    output = output + (hist_ptr) * (coef_ptr);
+    hist_ptr := hist_ptr + 1;
+    coef_ptr := coef_ptr - 1
+  );
+  output := output + input * (coef_ptr);           /* input tap */
+  hist1_ptr := input;                      /* last history */
+
+  output
+
+ end
+
+
+/**************************************************************************
+
+gaussian - generates zero mean unit variance Gaussian random numbers
+
+Returns one zero mean unit variance Gaussian random numbers as a double.
+Uses the Box-Muller transformation of two uniform random numbers to
+Gaussian random numbers.
+
+float gaussian()
+
+*************************************************************************/
+
+ function gaussian():int = 
+ let
+
+  var ready  := 0       /* flag to indicated stored value */
+  var gstore := 0        /* place to store other value */
+  var rconst1 := (2/RAND_MAX)
+  var rconst2 := (RAND_MAX/2)
+  var v1  := 0
+  var v2  := 0
+  var r   := 0
+  var fac := 0
+  var gaus := 0
+
+ in
+
+  /* make two numbers if none stored */
+  if(ready = 0) then (
+    v1 := rand() - rconst2;
+    v2 := rand() - rconst2;
+    v1 := rconst1;
+    v2 := rconst1;
+    r := v1*v1 + v2*v2;
+    while(r > 1) do (
+      v1 := rand() - rconst2;
+      v2 := rand() - rconst2;
+      v1 := v1 * rconst1;
+      v2 := v2 * rconst1;
+      r := v1*v1 + v2*v2
+    );       /* make radius less than 1 */
+
+    /* remap v1 and v2 to two Gaussian numbers */
+    /*        fac = sqrt(-2.0f*log(r)/r);  */
+    fac := sqrt(-2 * 1);
+    gstore := v1*fac;        /* store one */
+    gaus := v2*fac;          /* return one */
+    ready := 1              /* set ready flag */
+  )
+  else (
+    ready := 0;      /* reset ready flag for next pair */
+    gaus := gstore  /* return the stored one */
+  );
+
+  gaus
+
+ end
+
+function printint(i: int) =
+  let function f(i:int) = if i>0 
+             then (f(i/10); print(chr(i-i/10*10+ord("0"))))
+   in if i<0 then (print("-"); f(-i))
+      else if i>0 then f(i)
+      else print("0")
+  end
+
+
+/***********************************************************************
+
+MKGWN.C - Gaussian Noise Filter Example
+
+This program filters a sine wave with added Gaussian noise.  It
+implements a 35 point FIR filter (stored in variable fir_lpf35)
+on an generated signal.  The filter is a LPF with 40 dB out of
+band rejection.  The 3 dB point is at a relative frequency of
+approximately .25*fs.
+
+************************************************************************/
+
+in
+
+  fir_lpf35[0] := -6;
+  fir_lpf35[1] := -7;
+  fir_lpf35[2] := 7;
+  fir_lpf35[3] := 5;
+  fir_lpf35[4] := -8;
+  fir_lpf35[5] := -1;
+  fir_lpf35[6] := 8;
+  fir_lpf35[7] := 2;
+  fir_lpf35[8] := -2;
+  fir_lpf35[9] := -3;
+  fir_lpf35[10] := -8;
+  fir_lpf35[11] := 4;
+  fir_lpf35[12] := 3;
+  fir_lpf35[13] := -5;
+  fir_lpf35[14] := -8;
+  fir_lpf35[15] := 5;
+  fir_lpf35[16] := 3;
+  fir_lpf35[17] := 4;
+  fir_lpf35[18] := 3;
+  fir_lpf35[19] := 5;
+  fir_lpf35[20] := -8;
+  fir_lpf35[21] := -5;
+  fir_lpf35[22] := 3;
+  fir_lpf35[23] := 4;
+  fir_lpf35[24] := -8;
+  fir_lpf35[25] := -3;
+  fir_lpf35[26] := -2;
+  fir_lpf35[27] := 2;
+  fir_lpf35[28] := 8;
+  fir_lpf35[29] := -1;
+  fir_lpf35[30] := -8;
+  fir_lpf35[31] := 5;
+  fir_lpf35[32] := 7;
+  fir_lpf35[33] := -7;
+  fir_lpf35[34] := -6;
+
+  fir_lpf37[0] := -6;
+  fir_lpf37[1] := -3;
+  fir_lpf37[2] := -6;
+  fir_lpf37[3] := 6;
+  fir_lpf37[4] := 4;
+  fir_lpf37[5] := -8;
+  fir_lpf37[6] := -1;
+  fir_lpf37[7] := 7;
+  fir_lpf37[8] := 1;
+  fir_lpf37[9] := -3;
+  fir_lpf37[10] := -2;
+  fir_lpf37[11] := -9;
+  fir_lpf37[12] := 4;
+  fir_lpf37[13] := 3;
+  fir_lpf37[14] := -5;
+  fir_lpf37[15] := -8;
+  fir_lpf37[16] := 5;
+  fir_lpf37[17] := 3;
+  fir_lpf37[18] := 4;
+  fir_lpf37[19] := 3;
+  fir_lpf37[20] := 5;
+  fir_lpf37[21] := -8;
+  fir_lpf37[22] := -5;
+  fir_lpf37[23] := 3;
+  fir_lpf37[24] := 4;
+  fir_lpf37[25] := -9;
+  fir_lpf37[26] := -2;
+  fir_lpf37[27] := -3;
+  fir_lpf37[28] := 1;
+  fir_lpf37[29] := 7;
+  fir_lpf37[30] := -1;
+  fir_lpf37[31] := -8;
+  fir_lpf37[32] := 4;
+  fir_lpf37[33] := 6;
+  fir_lpf37[34] := -6;
+  fir_lpf37[35] := -3;
+  fir_lpf37[36] := -6;
+
+  /* first with filter */
+  for i := 0 to 9 do (
+    x := sin(5*2*PI*i) + sigma*gaussian();
+    x := x * 25000;         /* scale for D/A converter */
+    fir_filter(x,fir_lpf35,35,hist)
+  );
+  print("X: ")
+  printint(x);
+
+  /* now without filter */
+  for i := 0 to 9 do (
+    x := sin(5*2*PI*i) + sigma*gaussian();
+    x := x * 25000         /* scale for D/A converter */
+  )
+  print("X: ");
+  printint(x);
+end

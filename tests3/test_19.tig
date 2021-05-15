@@ -1,0 +1,179 @@
+/*************************************************************************/
+/*                                                                       */
+/*   SNU-RT Benchmark Suite for Worst Case Timing Analysis               */
+/*   =====================================================               */
+/*                              Collected and Modified by S.-S. Lim      */
+/*                                           sslim@archi.snu.ac.kr       */
+/*                                         Real-Time Research Group      */
+/*                                        Seoul National University      */
+/*                                                                       */
+/*                                                                       */
+/*        < Features > - restrictions for our experimental environment   */
+/*                                                                       */
+/*          1. Completely structured.                                    */
+/*               - There are no unconditional jumps.                     */
+/*               - There are no exit from loop bodies.                   */
+/*                 (There are no 'break' or 'return' in loop bodies)     */
+/*          2. No 'switch' statements.                                   */
+/*          3. No 'do..while' statements.                                */
+/*          4. Expressions are restricted.                               */
+/*               - There are no multiple expressions joined by 'or',     */
+/*                'and' operations.                                      */
+/*          5. No library calls.                                         */
+/*               - All the functions needed are implemented in the       */
+/*                 source file.                                          */
+/*                                                                       */
+/*                                                                       */
+/*************************************************************************/
+/*                                                                       */
+/*  FILE: qurt.c                                                         */
+/*  SOURCE : Turbo C Programming for Engineering by Hyun Soo Ahn         */
+/*                                                                       */
+/*  DESCRIPTION :                                                        */
+/*                                                                       */
+/*     Root computation of quadratic equations.                          */
+/*     The real and imaginary parts of the solution are stored in the    */
+/*     array x1[] and x2[].                                              */
+/*                                                                       */
+/*  REMARK :                                                             */
+/*                                                                       */
+/*  EXECUTION TIME :                                                     */
+/*                                                                       */
+/*                                                                       */
+/*************************************************************************/
+
+
+
+/*
+** Benchmark Suite for Real-Time Applications, by Sung-Soo Lim
+**     
+**    III-7. qurt.c : the root computation of a quadratic equation
+**                 (from the book C Programming for EEs by Hyun Soon Ahn)
+*/
+
+let
+
+ type intARRAY = array of int
+
+ var a  := intARRAY[3] of 0
+ var x1 := intARRAY[2] of 0
+ var x2 := intARRAY[2] of 0
+
+ var flag := 0
+
+
+ function fabs(n:int): int = 
+  if (n >= 0) then n else -n
+
+
+ function sqrt(val:int): int = 
+ let
+
+  var x := val/10
+  var dx := 0
+  var diff := 0
+  var min_tol := 0 /*0.00001;*/
+  var flag := 0
+
+ in
+
+  if (val = 0) 
+  then x := 0
+  else 
+    for i:=1 to 19 do
+	if (not(flag)) 
+        then
+        (
+	  dx := (val - (x*x)) / (2 * x);
+	  x := x + dx;
+	  diff := val - (x*x);
+	  if (fabs(diff) <= min_tol) then flag := 1
+	)
+	else 
+	  x := x;
+  x
+
+ end
+
+ function printint(i: int) =
+  let function f(i:int) = if i>0 
+             then (f(i/10); print(chr(i-i/10*10+ord("0"))))
+   in if i<0 then (print("-"); f(-i))
+      else if i>0 then f(i)
+      else print("0")
+  end
+
+
+ function  qurt():int = 
+ let
+
+	var  d:=0
+        var  w1:=0
+        var  w2:=0
+        var  ret:=0
+
+ in
+	if (a[0] = 0) 
+        then 
+          ret := 999
+        else
+        (
+	  d := a[1]*a[1] - 4 * a[0] * a[2];
+	  w1 := 2 * a[0];
+	  w2 := sqrt(fabs(d));
+	  if (d > 0)
+          then
+	  (
+		 flag := 1;
+		 x1[0] := (-a[1] + w2) / w1;
+		 x1[1] := 0;
+		 x2[0] := (-a[1] - w2) / w1;
+		 x2[1] := 0;
+		 ret := 0
+	  )
+	  else 
+            if (d = 0)
+            then
+	    (
+		 flag := 0;
+		 x1[0] := -a[1] / w1;
+		 x1[1] := 0;
+		 x2[0] := x1[0];
+		 x2[1] := 0;
+		 ret := 0
+	     )
+	    else
+	    (
+		 flag := -1;
+		 w2 := w2 / w1;
+		 x1[0] := -a[1] / w1;
+		 x1[1] := w2;
+		 x2[0] := x1[0];
+		 x2[1] := -w2;
+		 ret := 0
+	    )
+        );
+        ret
+ end
+
+in
+
+ a[0] =  1;
+ a[1] = -3;
+ a[2] =  2;
+
+ printint(qurt());
+
+ a[0] =  1;
+ a[1] = -2;
+ a[2] =  1;
+
+ printint(qurt());
+
+ a[0] =  1;
+ a[1] = -4;
+ a[2] =  8;
+
+ printint(qurt())
+
+end

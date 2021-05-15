@@ -1,0 +1,45 @@
+/* print the max value in a array of int */
+
+let
+    type intarr = array of int
+    var arrsize := 10
+	var arr : intarr := intarr [arrsize] of 0
+
+    function printArr(arr : intarr, size : int) =
+		let
+			var i := 0
+		in
+			print("[");
+			do (
+				printd(arr[i]);
+				print(", ");
+				i := i + 1
+			) while i < size;
+			print("\b\b]")
+		end
+
+    function max(arr : intarr, size : int) : int =
+        let
+            var max := 0
+        in
+            for i := 0 to size do (
+		        if arr[i] > max then
+                    max := arr[i]
+	        );
+
+            max
+        end
+
+in
+    for i := 0 to arrsize do (
+		arr[i] := i
+	);
+
+    arr[7] := 50;
+
+    print("Max of: ");
+    printArr(arr, arrsize);
+    print(" is: ");
+    printd(max(arr, arrsize));
+    print("\n")
+end

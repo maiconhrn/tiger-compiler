@@ -1,0 +1,6 @@
+/* formals are equal then actuals */
+let
+	function g (a:int , b:string):string = b
+in
+	print(g(10, "one"))
+end
