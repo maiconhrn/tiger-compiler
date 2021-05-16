@@ -73,7 +73,7 @@ in
   while (rad > 2*PI) do
     rad := rad - 2 * PI;
   while (rad < -2*PI) do
-    rad = rad + 2 * PI;
+    rad := rad + 2 * PI;
   app := rad;
   diff := rad;
   diff := (diff * (-(rad*rad))) / ((2 * inc) * (2 * inc + 1));
@@ -179,8 +179,8 @@ in
 	  k := j1;
 	  while (k < j) do
 	    (
-	      j = j - k;
-	      k = k /2
+	      j := j - k;
+	      k := k /2
 	    );
 	  j = j + k
 	);
@@ -222,7 +222,7 @@ in
 
   /* inverse fft */
   flag := 1;
-  chkerr := fft1(n, flag)
+  chkerr := fft1(n, flag);
   print("chkerr: ");printint(chkerr);
 
 end

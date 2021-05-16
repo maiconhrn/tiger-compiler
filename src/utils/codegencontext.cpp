@@ -38,6 +38,9 @@ llvm::Value *CodeGenContext::strcmp(llvm::Value *a, llvm::Value *b) {
 
 llvm::Value *CodeGenContext::checkStore(llvm::Value *val, llvm::Value *ptr) {
     val = convertNil(val, ptr);
+    if (!val) {
+        return nullptr;
+    }
 
     return builder.CreateStore(val, ptr);
 }
@@ -129,11 +132,6 @@ llvm::Type *CodeGenContext::typeOf(const AST::Location &loc,
         return logErrorT(name + " is not a type", loc);
     }
 
-    //TODO verify array difenty type like
-    //	type arrtype1 = array of int
-    //	type arrtype2 = array of int
-    //
-    //	var arr1: arrtype1 := arrtype2 [10] of 0
     return typeDec->traverse(parentName, *this);
 }
 

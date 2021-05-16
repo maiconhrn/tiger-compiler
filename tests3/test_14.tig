@@ -355,7 +355,7 @@ in
     x := x * 25000;         /* scale for D/A converter */
     fir_filter(x,fir_lpf35,35,hist)
   );
-  print("X: ")
+  print("X: ");
   printint(x);
 
   /* now without filter */

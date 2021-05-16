@@ -371,7 +371,7 @@ llvm::Type *ForExp::traverse(vector<VarDec *> &variableTable,
     }
 
     context.inLoopStack.pop();
-    
+
     return context.voidType;
 }
 
@@ -416,7 +416,9 @@ llvm::Type *LetExp::traverse(vector<VarDec *> &variableTable,
 
 bool TypeDec::computeHeaderTraverse(vector<VarDec *> &vector,
                                     CodeGenContext &context) {
-    if (context.typeDecs.lookupOne(name_.getName())) {
+    if (context.typeDecs.lookupOne(name_.getName())
+        && this->getConcreteType() == (context.lastDec ? context.lastDec->getConcreteType() : "")
+        && this->getName() == context.lastDec->getName()) {
         context.logErrorT("Type "
                           + name_.getName()
                           + " is already defined in same scope.",
@@ -428,7 +430,7 @@ bool TypeDec::computeHeaderTraverse(vector<VarDec *> &vector,
     context.lastDec = this;
 
     type_->setName(name_);
-    context.typeDecs[name_.getName()] = type_.get();
+    context.typeDecs.lookupOne(name_.getName()) = type_.get();
 
     return true;
 }
@@ -466,11 +468,6 @@ llvm::Type *ArrayExp::traverse(vector<VarDec *> &variableTable,
         return context.logErrorT("Initial type not matches", init_->getLoc());
     }
 
-    //TODO verify array difenty type like
-    //	type arrtype1 = array of int
-    //	type arrtype2 = array of int
-    //
-    //	var arr1: arrtype1 := arrtype2 [10] of 0
     return type_;
 }
 
@@ -516,12 +513,8 @@ bool FunctionDec::computeHeaderTraverse(vector<VarDec *> &vector,
         return false;
     }
 
-    context.valueDecs.enter();
-
     context.functions.lookupOne(name_.getName()) = proto_->getFunction();
     context.lastDec = this;
-
-    context.valueDecs.exit();
 
     return true;
 }
@@ -551,14 +544,14 @@ llvm::Type *FunctionDec::traverse(vector<VarDec *> &, CodeGenContext &context) {
 }
 
 llvm::Type *SimpleVar::traverse(vector<VarDec *> &, CodeGenContext &context) {
-    auto type = context.valueDecs[name_.getName()];
+    auto var = context.valueDecs[name_.getName()];
 
-    if (!type) {
+    if (!var) {
         return context.logErrorT(name_.getName()
                                  + " is not defined", name_.getLoc());
     }
 
-    return type->getType();
+    return var->getType();
 }
 
 bool VarDec::computeHeaderTraverse(vector<VarDec *> &vector,

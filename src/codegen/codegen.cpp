@@ -456,6 +456,8 @@ llvm::Value *AST::FieldExp::codegen(CodeGenContext &context) {
 }
 
 llvm::Value *AST::RecordExp::codegen(CodeGenContext &context) {
+    return context.logErrorV("Sorry, record exp codegen is not working. You can use opt: \"-no-codegen\" to skip codegen phase.");
+
     llvm::Type *objType = context.module->getTypeByName(typeName_->getName().getName());
 
     context.builder.GetInsertBlock()->getParent();

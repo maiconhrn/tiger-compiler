@@ -123,11 +123,12 @@ int main(int argc, char **argv) {
     }
 
     syntacticAnalisys();
-    semanticAnalisys(codeGenContext);
 
     if (std::find(args.begin(), args.end(), "-a") != args.end()) {
         printABS();
     }
+
+    semanticAnalisys(codeGenContext);
 
     if (std::find(args.begin(), args.end(), "-no-codegen") == args.end()) {
         codegen(codeGenContext);

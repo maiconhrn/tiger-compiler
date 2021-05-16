@@ -1,7 +1,3 @@
 /* error : if-then returns non unit */
 
-/*estaria certo se o then retornasse void*/
 if 20 then 3
-
-/*esta certo, pois tem o retorno para os dois tipos da condicional
-if 20 then 3 else 5*/
