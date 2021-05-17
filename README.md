@@ -33,7 +33,7 @@ You can use the [test.tig](./test.tig) file for test.
 
 ex:  
 ```shell
-$ ./build/tc -p test.tig -lsrc/utils/runtime.cpp
+$ ./build/tc -p test.tig -lsrc/utils/runtime.cpp -lsrc/utils/runtime.cpp
 ```   
 
 Compile exec options are:  
