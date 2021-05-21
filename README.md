@@ -43,4 +43,5 @@ Compile exec options are:
  - "-o {{output file}}" : output the compiled executable for "-p" file.
  - "-l{{lib path}}" : add external lib to be compiled with "-p" file.
  - "-no-codegen" : skips the codegen phase, i.e., execute only Syntactic and Semantic analysis.  
+  
 OBS: the use of "-p {{path to the file with Tiger code}}" and "-l{{path to runtime.cpp or runtime.o file}}" options are obligatory.
